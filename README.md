@@ -57,11 +57,29 @@ Keys are server-side only and are never returned by any endpoint.
 Docker alternative: `docker compose up --build` (API on `127.0.0.1:8000`, non-root,
 read-only filesystem, SQLite in a named volume).
 
+## Quickstart (frontend)
+
+Requires Node.js 20+. Run the backend first (above) so the dashboard's
+"Backend status" panel has something to call.
+
+```bash
+cd apps/web
+npm install
+npm run dev      # http://localhost:3000; expects the API on :8000 by default
+```
+
+`NEXT_PUBLIC_API_BASE_URL` (see `apps/web/.env.example`) is the only
+configuration the browser reads; it never sees a Nebius, OpenShell or Tavily
+key. `/templates` and `/runs` are not implemented yet (Commit 03), so the
+scenario cards and runs table render clearly labeled **sample data**, never
+presented as a live result. See `apps/web/README.md` for scripts (`lint`,
+`typecheck`, `build`, `test`).
+
 ## Repository layout
 | Path | Purpose |
 |---|---|
 | `apps/api` | FastAPI service (`prooflayer_api`), Alembic migrations, Dockerfile |
-| `apps/web` | Next.js dashboard (Commit 02) |
+| `apps/web` | Next.js (App Router) + TypeScript + Tailwind dashboard (Commit 02) |
 | `packages/contracts` | Python loaders for the canonical contracts |
 | `contracts/` | `openapi.yaml`, `schemas.json` (source of truth) |
 | `tests/` | pytest suite (API, config, contracts, migrations, repo hygiene) |
