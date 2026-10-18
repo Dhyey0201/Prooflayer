@@ -1,0 +1,35 @@
+# Local development stack. The web service is added in Commit 02 (apps/web).
+services:
+  api:
+    build:
+      context: ./apps/api
+    environment:
+      PROOFLAYER_MOCK_MODE: ${PROOFLAYER_MOCK_MODE:-true}
+      DATABASE_URL: sqlite:////app/data/prooflayer.db
+      # Empty unless set in your shell or a git-ignored .env file.
+      NEBIUS_API_KEY: ${NEBIUS_API_KEY:-}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - api-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  api-data:

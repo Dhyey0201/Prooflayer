@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProofLayer proof challenge proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requirement_id",
+    "challenge_type",
+    "test_source",
+    "rationale"
+  ],
+  "properties": {
+    "requirement_id": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "challenge_type": {
+      "enum": [
+        "pytest_case"
+      ]
+    },
+    "test_source": {
+      "type": "string",
+      "maxLength": 10000
+    },
+    "rationale": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  }
+}

@@ -1,0 +1,119 @@
+openapi: 3.1.0
+info:
+  title: ProofLayer API
+  version: 0.1.0
+  description: Contract-first demo API; write operations restricted and rate-limited.
+servers:
+  - url: http://localhost:8000/api/v1
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        '200': {description: Health, content: {application/json: {schema: {type: object, properties: {status: {type: string}}}}}}
+  /capabilities:
+    get:
+      operationId: getCapabilities
+      responses:
+        '200': {description: Environment capabilities and only boolean availability, content: {application/json: {schema: {type: object}}}}
+  /templates:
+    get:
+      operationId: listTemplates
+      responses:
+        '200': {description: Trusted fixture templates, content: {application/json: {schema: {type: array, items: {type: object}}}}}
+  /runs:
+    get:
+      operationId: listRuns
+      responses:
+        '200': {description: Run summaries, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Run'}}}}}
+    post:
+      operationId: createRun
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RunCreate'}}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
+        '422': {description: Invalid fixture / settings}
+        '429': {description: Rate limit}
+  /runs/{run_id}:
+    parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      operationId: getRun
+      responses:
+        '200': {description: Run detail, content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
+        '404': {description: Not found}
+  /runs/{run_id}/events:
+    parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      operationId: getRunEvents
+      parameters: [{name: after_seq, in: query, required: false, schema: {type: integer, minimum: 0}}]
+      responses:
+        '200': {description: Run events, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Event'}}}}}
+  /runs/{run_id}/checks:
+    parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      operationId: listChecks
+      responses:
+        '200': {description: Independent checks, content: {application/json: {schema: {type: array, items: {type: object}}}}}
+  /runs/{run_id}/challenge:
+    parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    post:
+      operationId: startChallenge
+      responses:
+        '202': {description: Challenge queued, content: {application/json: {schema: {type: object}}}}
+        '409': {description: Cannot challenge yet}
+  /runs/{run_id}/certificate:
+    parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      operationId: getCertificate
+      responses:
+        '200': {description: Evidence certificate, content: {application/json: {schema: {$ref: '#/components/schemas/Certificate'}}}}
+        '404': {description: Not ready}
+  /runs/{run_id}/cancel:
+    parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    post:
+      operationId: cancelRun
+      responses:
+        '202': {description: Cancellation requested}
+components:
+  schemas:
+    RunCreate:
+      type: object
+      additionalProperties: false
+      required: [template_id, mode]
+      properties:
+        template_id: {type: string, enum: [success-validation, false-success-auth, denied-secret-read]}
+        mode: {type: string, enum: [fixture, live], default: fixture}
+    Run:
+      type: object
+      required: [id, template_id, status, mode, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        template_id: {type: string}
+        status: {type: string, enum: [created, queued, provisioning, running, verifying, verified, failed, inconclusive, canceled, error]}
+        mode: {type: string, enum: [fixture, live, replay]}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        agent_claim: {type: [string, 'null']}
+        verdict: {type: [string, 'null'], enum: [VERIFIED, FAILED, INCONCLUSIVE, null]}
+    Event:
+      type: object
+      required: [run_id, seq, timestamp, event_type, actor, safe_payload, previous_hash, event_hash]
+      properties:
+        run_id: {type: string, format: uuid}
+        seq: {type: integer, minimum: 1}
+        timestamp: {type: string, format: date-time}
+        event_type: {type: string}
+        actor: {type: string}
+        safe_payload: {type: object}
+        previous_hash: {type: string}
+        event_hash: {type: string}
+    Certificate:
+      type: object
+      required: [schema_version, run_id, verdict, claims, evidence_manifest_sha256]
+      properties:
+        schema_version: {type: string, const: '0.1.0'}
+        run_id: {type: string, format: uuid}
+        verdict: {type: string, enum: [VERIFIED, FAILED, INCONCLUSIVE]}
+        claims: {type: array, items: {type: object}}
+        checks: {type: array, items: {type: object}}
+        evidence_manifest_sha256: {type: string}
+        limitations: {type: array, items: {type: string}}

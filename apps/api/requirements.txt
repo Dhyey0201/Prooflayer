@@ -1,0 +1,9 @@
+# Pinned runtime dependencies for the ProofLayer API (Python 3.12+).
+fastapi==0.143.3
+starlette==1.8.0
+uvicorn==0.54.0
+pydantic==2.14.1
+pydantic-settings==2.16.0
+SQLAlchemy==2.1.5
+alembic==1.20.0
+PyYAML==6.0.3
