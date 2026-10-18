@@ -1,0 +1,89 @@
+import type {
+  ApiErrorBody,
+  ApiErrorEnvelope,
+  CapabilitiesResponse,
+  HealthResponse,
+} from "./types";
+
+/**
+ * Base URL for the ProofLayer API. Configurable only through
+ * `NEXT_PUBLIC_API_BASE_URL`; the browser never talks to Nebius, OpenShell or
+ * any other upstream provider directly.
+ */
+const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000/api/v1";
+
+export function getApiBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+}
+
+export class ApiRequestError extends Error {
+  readonly code: ApiErrorBody["code"];
+  readonly requestId: string | null;
+  readonly status: number;
+
+  constructor(status: number, body: ApiErrorBody) {
+    super(body.message);
+    this.name = "ApiRequestError";
+    this.status = status;
+    this.code = body.code;
+    this.requestId = body.request_id;
+  }
+}
+
+function isErrorEnvelope(value: unknown): value is ApiErrorEnvelope {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "error" in value &&
+    typeof (value as ApiErrorEnvelope).error === "object"
+  );
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const url = `${getApiBaseUrl()}${path}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        ...init?.headers,
+      },
+    });
+  } catch {
+    throw new ApiRequestError(0, {
+      code: "network_error",
+      message: `Could not reach the ProofLayer API at ${url}.`,
+      request_id: null,
+    });
+  }
+
+  if (!response.ok) {
+    let body: unknown = null;
+    try {
+      body = await response.json();
+    } catch {
+      body = null;
+    }
+    if (isErrorEnvelope(body)) {
+      throw new ApiRequestError(response.status, body.error);
+    }
+    throw new ApiRequestError(response.status, {
+      code: "internal_error",
+      message: `Request to ${path} failed with status ${response.status}.`,
+      request_id: null,
+    });
+  }
+
+  return (await response.json()) as T;
+}
+
+export function getHealth(init?: RequestInit): Promise<HealthResponse> {
+  return request<HealthResponse>("/health", init);
+}
+
+export function getCapabilities(
+  init?: RequestInit,
+): Promise<CapabilitiesResponse> {
+  return request<CapabilitiesResponse>("/capabilities", init);
+}
