@@ -41,6 +41,19 @@ class CheckOutcome(StrEnum):
     INCONCLUSIVE = "INCONCLUSIVE"
 
 
+class EventType(StrEnum):
+    RUN_CREATED = "run.created"
+    RUN_STATUS_CHANGED = "run.status_changed"
+
+
+class Actor(StrEnum):
+    """Who wrote an event. The agent never appears here: it cannot write evidence."""
+
+    API = "api"
+    ORCHESTRATOR = "orchestrator"
+    SEEDER = "seeder"
+
+
 class ErrorCode(StrEnum):
     BAD_REQUEST = "bad_request"
     VALIDATION_ERROR = "validation_error"

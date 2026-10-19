@@ -15,38 +15,50 @@ paths:
     get:
       operationId: getCapabilities
       responses:
-        '200': {description: Environment capabilities and only boolean availability, content: {application/json: {schema: {type: object}}}}
+        '200': {description: Environment capabilities and only boolean availability, content: {application/json: {schema: {$ref: '#/components/schemas/Capabilities'}}}}
   /templates:
     get:
       operationId: listTemplates
       responses:
-        '200': {description: Trusted fixture templates, content: {application/json: {schema: {type: array, items: {type: object}}}}}
+        '200': {description: Trusted fixture templates, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Template'}}}}}
   /runs:
     get:
       operationId: listRuns
+      parameters: [{name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}]
       responses:
-        '200': {description: Run summaries, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Run'}}}}}
+        '200': {description: Run summaries, newest first, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Run'}}}}}
     post:
       operationId: createRun
+      description: Creates a fixture run in `queued` state. `live` mode returns 422 until a live agent runtime exists.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: "Replays the original run (201, header `Idempotent-Replayed: true`) for the same body; 409 for a different body."
+          schema: {type: string, pattern: '^[A-Za-z0-9_-]{8,128}$'}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RunCreate'}}}}
       responses:
-        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
-        '422': {description: Invalid fixture / settings}
-        '429': {description: Rate limit}
+        '201': {description: Created (or idempotent replay), content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
+        '409': {description: Idempotency-Key reused with a different body, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '422': {description: Invalid fixture / settings, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '429': {description: Too many pending runs, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   /runs/{run_id}:
     parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
     get:
       operationId: getRun
       responses:
         '200': {description: Run detail, content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
-        '404': {description: Not found}
+        '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   /runs/{run_id}/events:
     parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
     get:
       operationId: getRunEvents
-      parameters: [{name: after_seq, in: query, required: false, schema: {type: integer, minimum: 0}}]
+      parameters:
+        - {name: after_seq, in: query, required: false, schema: {type: integer, minimum: 0}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 1000, default: 1000}}
       responses:
-        '200': {description: Run events, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Event'}}}}}
+        '200': {description: Run events ordered by seq, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Event'}}}}}
+        '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   /runs/{run_id}/checks:
     parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
     get:
@@ -71,10 +83,49 @@ paths:
     parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
     post:
       operationId: cancelRun
+      description: Cancels an active run. Idempotent for an already-canceled run.
       responses:
-        '202': {description: Cancellation requested}
+        '202': {description: Cancellation recorded, content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
+        '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '409': {description: Run already in another terminal state, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
 components:
   schemas:
+    Capabilities:
+      type: object
+      additionalProperties: false
+      required: [mock_mode, nebius_configured, live_model_enabled, openshell_available, sandbox_enforced, independent_verifier_available, tavily_enabled]
+      properties:
+        mock_mode: {type: boolean}
+        nebius_configured: {type: boolean}
+        live_model_enabled: {type: boolean}
+        openshell_available: {type: boolean}
+        sandbox_enforced: {type: boolean}
+        independent_verifier_available: {type: boolean}
+        tavily_enabled: {type: boolean}
+    Template:
+      type: object
+      required: [id, title, description, allowed_paths, read_denied_paths, required_checks, policy_version, repo_sha, expected_verdict]
+      properties:
+        id: {type: string, enum: [success-validation, false-success-auth, denied-secret-read]}
+        title: {type: string}
+        description: {type: string}
+        allowed_paths: {type: array, items: {type: string}}
+        read_denied_paths: {type: array, items: {type: string}}
+        required_checks: {type: array, items: {type: string}, description: Check template IDs, never commands}
+        policy_version: {type: string}
+        repo_sha: {type: string, description: "'unpinned' until fixture repositories exist"}
+        expected_verdict: {type: string, enum: [VERIFIED, FAILED, INCONCLUSIVE], description: Benchmark ground truth, not a run result}
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code: {type: string, enum: [bad_request, validation_error, not_found, method_not_allowed, conflict, rate_limited, internal_error]}
+            message: {type: string}
+            request_id: {type: [string, 'null']}
     RunCreate:
       type: object
       additionalProperties: false
@@ -101,11 +152,11 @@ components:
         run_id: {type: string, format: uuid}
         seq: {type: integer, minimum: 1}
         timestamp: {type: string, format: date-time}
-        event_type: {type: string}
-        actor: {type: string}
-        safe_payload: {type: object}
-        previous_hash: {type: string}
-        event_hash: {type: string}
+        event_type: {type: string, enum: [run.created, run.status_changed]}
+        actor: {type: string, enum: [api, orchestrator, seeder]}
+        safe_payload: {type: object, description: Allowlisted scalar fields only}
+        previous_hash: {type: string, description: "64 zeros for seq 1"}
+        event_hash: {type: string, description: "sha256 of canonical JSON of all other fields"}
     Certificate:
       type: object
       required: [schema_version, run_id, verdict, claims, evidence_manifest_sha256]

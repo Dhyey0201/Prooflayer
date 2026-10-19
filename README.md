@@ -40,6 +40,7 @@ Requires Python 3.12+ and `make`.
 git clone https://github.com/Dhyey0201/Prooflayer.git && cd Prooflayer
 make install                  # .venv + pinned deps from apps/api/requirements-dev.txt
 make lint test check-docs     # ruff check, ruff format --check, pytest -q, handoff check
+make seed                     # optional: one queued fixture run per template
 make run                      # alembic upgrade head, then API on http://127.0.0.1:8000
 ```
 
@@ -48,14 +49,23 @@ In another terminal:
 ```bash
 curl -s http://127.0.0.1:8000/api/v1/health         # {"status":"ok"}
 curl -s http://127.0.0.1:8000/api/v1/capabilities   # boolean flags only
+curl -s http://127.0.0.1:8000/api/v1/templates      # trusted fixture registry
+curl -s -X POST http://127.0.0.1:8000/api/v1/runs \
+  -H 'Content-Type: application/json' -H 'Idempotency-Key: demo-run-0001' \
+  -d '{"template_id":"false-success-auth","mode":"fixture"}'
+curl -s http://127.0.0.1:8000/api/v1/runs/<id>/events   # hash-chained evidence events
 ```
+
+A new run is persisted in `queued` state with a hash-chained event log. **No agent,
+sandbox or verifier executes it yet** (Commits 05/07/09), so no run reaches a
+verdict; `mode: "live"` returns 422 until a live runtime exists.
 
 Optional configuration: `cp .env.example .env` (git-ignored). Setting
 `PROOFLAYER_MOCK_MODE=false` requires `NEBIUS_API_KEY`; the API refuses to start otherwise.
 Keys are server-side only and are never returned by any endpoint.
 
-Docker alternative: `docker compose up --build` (API on `127.0.0.1:8000`, non-root,
-read-only filesystem, SQLite in a named volume).
+Docker alternative: `docker compose up --build` (API on `127.0.0.1:8000`, or set
+`API_PORT=8001`; non-root, read-only filesystem, SQLite in a named volume).
 
 ## Quickstart (frontend)
 
@@ -70,9 +80,9 @@ npm run dev      # http://localhost:3000; expects the API on :8000 by default
 
 `NEXT_PUBLIC_API_BASE_URL` (see `apps/web/.env.example`) is the only
 configuration the browser reads; it never sees a Nebius, OpenShell or Tavily
-key. `/templates` and `/runs` are not implemented yet (Commit 03), so the
-scenario cards and runs table render clearly labeled **sample data**, never
-presented as a live result. See `apps/web/README.md` for scripts (`lint`,
+key. `/templates` and `/runs` exist on the backend as of Commit 03; until the
+dashboard is wired to them (Commit 04) the scenario cards and runs table render
+clearly labeled **sample data**, never presented as a live result. See `apps/web/README.md` for scripts (`lint`,
 `typecheck`, `build`, `test`).
 
 ## Repository layout

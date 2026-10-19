@@ -39,6 +39,8 @@ class Settings(BaseSettings):
 
     # Hard limits (enforced by later milestones; declared here so they are configured once).
     max_concurrent_runs: int = Field(default=1, ge=1, le=4, alias="PROOFLAYER_MAX_CONCURRENT_RUNS")
+    # Non-terminal runs allowed at once; POST /runs returns 429 beyond this.
+    max_pending_runs: int = Field(default=10, ge=1, le=100, alias="PROOFLAYER_MAX_PENDING_RUNS")
     max_run_seconds: int = Field(default=120, ge=1, le=900, alias="PROOFLAYER_MAX_RUN_SECONDS")
     max_output_bytes: int = Field(
         default=1_000_000, ge=1_024, le=10_000_000, alias="PROOFLAYER_MAX_OUTPUT_BYTES"
