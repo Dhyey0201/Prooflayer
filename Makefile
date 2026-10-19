@@ -2,7 +2,7 @@ PYTHON ?= python3.12
 VENV ?= .venv
 BIN := $(VENV)/bin
 
-.PHONY: install lint format test check-docs migrate run ci clean
+.PHONY: install lint format test check-docs migrate seed run ci clean
 
 install: ## Create venv and install pinned dev dependencies
 	$(PYTHON) -m venv $(VENV)
@@ -25,6 +25,9 @@ check-docs: ## Validate the handoff package
 
 migrate: ## Apply database migrations to DATABASE_URL
 	cd apps/api && ../../$(BIN)/alembic upgrade head
+
+seed: migrate ## Seed fixture templates and one queued fixture run per template
+	cd apps/api && ../../$(BIN)/python -m prooflayer_api.seed --with-runs
 
 run: migrate ## Run the API locally on :8000 (mock mode by default)
 	cd apps/api && ../../$(BIN)/uvicorn prooflayer_api.main:app --host 127.0.0.1 --port 8000 --reload

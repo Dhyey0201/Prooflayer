@@ -1,6 +1,6 @@
 """SQLAlchemy models for the data model in docs/02_ARCHITECTURE_SECURITY.md.
 
-Schema only: run lifecycle, hash-chain logic and repositories arrive in Commit 03.
+Behaviour lives in ``prooflayer_api.services`` and ``prooflayer_api.evidence``.
 Schema changes go through Alembic migrations in ``apps/api/migrations``.
 """
 
@@ -84,6 +84,13 @@ class Run(Base):
     policy_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     worktree_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Optimistic lock: every UPDATE checks and bumps this (StaleDataError on a race).
+    version: Mapped[int] = mapped_column(Integer, server_default="1")
+    # Optional client Idempotency-Key for POST /runs, with a digest of the request body.
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True)
+    request_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __mapper_args__ = {"version_id_col": version}  # noqa: RUF012
 
 
 class Event(Base):

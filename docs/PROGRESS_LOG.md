@@ -9,8 +9,8 @@ Human and coding agents append one block per merged commit:
 - Known blockers:
 - Confirm next contributor pulled merged main: yes/no
 
-## 2026-10-18 — Commit 01 — SHA: see PR (first commit on `feature/d1-dhyey-repo-foundation`) — Dhyey
-- PR: not opened yet. `main` does not exist on the remote (empty repo); a base branch is needed first (awaiting human approval).
+## 2026-10-18 — Commit 01 — SHA: c3a6e7f — Dhyey
+- PR: none. With human approval, this commit was pushed directly as the first commit of `main` (the remote was empty); every later commit goes through a PR. *(Corrected in Commit 03.)*
 - Files/feature:
   - Root: MIT `LICENSE`, `.gitignore` (ignores `.env*` except `.env.example`, DBs, venvs), `.env.example` (mock mode, empty keys), `Makefile`, `docker-compose.yml`, root `pyproject.toml` (Ruff + pytest config), README quickstart + security warning.
   - `apps/api` (`prooflayer_api`): Pydantic settings (`SecretStr` keys; `PROOFLAYER_MOCK_MODE=false` without `NEBIUS_API_KEY` refuses to start), typed enums mirroring the contract (`RunStatus`, `RunMode`, `Verdict`, `TemplateId`, `CheckOutcome`, `ErrorCode`), request-ID middleware (safe pattern or fresh UUID), typed error envelope `{error:{code,message,request_id}}` with a generic 500 that never echoes exception text, CORS limited to configured origins.
@@ -30,10 +30,10 @@ Human and coding agents append one block per merged commit:
   - `PROOFLAYER_MOCK_MODE=false` without key → startup `ValidationError` ("NEBIUS_API_KEY is required…") as intended.
   - Fresh clone of the branch into a temp dir + new venv: `make install` → OK; `make lint test check-docs` → PASS ("44 passed in 2.99s"); `make run` with empty environment → migration `0001` applied, health/capabilities 200; `git status` clean afterwards (SQLite DB ignored). Clone contained no `.env`, docx or agent-only files.
   - `docker compose config --quiet` → valid. **Docker image build NOT verified** (Docker daemon not running on dev host).
-  - GitHub Actions: **not yet run** (needs push).
+  - GitHub Actions: PASS on `c3a6e7f` (run 39110009375). *(Added in Commit 03; was "not yet run" when first written.)*
 - Security / model cost: no Nebius or Tavily calls; $0 model spend. Capabilities never return keys, URLs or model IDs (tested with a fake key). `openshell_available`, `sandbox_enforced`, `independent_verifier_available` are hard `false` — nothing is claimed as enforced. Validation errors list field locations only (no input echo). Write endpoints, auth and rate limiting are not implemented yet.
 - Contract notes for review: the plan says `/api/v1/config/capabilities`, but `contracts/openapi.yaml` (canonical) says `/capabilities` under server `/api/v1`; implemented the contract path. The contract leaves the capabilities schema open (`type: object`); proposing to pin it to the 7 boolean fields above.
-- Known blockers: remote has no `main` branch yet; Docker build unverified; CI unverified until first push.
+- Known blockers: Docker build unverified at the time (verified in Commit 03).
 - Confirm next contributor pulled merged main: no (not merged yet).
 - Next handoff (Ancy, Commit 02): after merge, `git switch main && git pull --ff-only origin main`, `make install && make test`, `make run`; build `apps/web` against `GET /api/v1/health` and `GET /api/v1/capabilities` using `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1`. CORS already allows `http://localhost:3000`. `/templates` and `/runs` are not implemented yet (Commit 03); use explicitly labeled sample fixtures for those.
 
@@ -61,3 +61,31 @@ Human and coding agents append one block per merged commit:
 - Known blockers: none new. Docker image build for `apps/web` not attempted (no Dockerfile requested for this commit; `apps/api`'s container is unaffected). In-browser client-side fetch not visually verified (see above).
 - Confirm next contributor pulled merged main: no (awaiting Dhyey's review/merge of PR #1).
 - Next handoff (Dhyey, Commit 03): after merge, `git fetch origin && git switch main && git pull --ff-only origin main`. Implement run create/read/list, fixture registry and the SQLite-backed `events` hash chain per the plan; once `/templates` and `/runs` are real, the frontend fixture adapters in `lib/fixtures/` are intentionally the only files that need to change to swap in live data — `RunsTable`/`ScenarioCard` already accept typed `Run`/`ScenarioTemplate` props.
+
+## 2026-10-19 — Commit 03 — SHA: see PR (branch `feature/d2-dhyey-run-lifecycle`) — Dhyey
+- PR: opened against `main` from `feature/d2-dhyey-run-lifecycle` (single commit for the day's work).
+- Files/feature:
+  - Endpoints (all under `/api/v1`, contract-first): `GET /templates`, `GET /runs` (`limit` 1-100, newest first), `POST /runs` (201; optional `Idempotency-Key`), `GET /runs/{id}`, `GET /runs/{id}/events` (`after_seq`, `limit`), `POST /runs/{id}/cancel` (202, idempotent). `checks`, `challenge` and `certificate` remain unimplemented (later commits).
+  - Fixture registry `services/fixtures.py`: the 3 templates live in code (trusted) and are upserted into `task_templates` on startup. `required_checks` are check-template IDs, not commands. `repo_sha` is the literal `"unpinned"` until fixture repos exist (Commit 09). `expected_verdict` is benchmark ground truth, matched against `benchmarks/fixture_manifest.json` by a test.
+  - State machine `services/state_machine.py`: created → queued → provisioning → running → verifying → {verified, failed, inconclusive}; any active state → canceled or error; terminal states have no exits. Verdict is set only by verified/failed/inconclusive.
+  - Run service `services/runs.py`: each status change and its event commit in one transaction; optimistic lock (`runs.version`, StaleDataError → 409); idempotent create (same key + body replays with `Idempotent-Replayed: true`, different body → 409, concurrent duplicates resolved via unique constraint); `PROOFLAYER_MAX_PENDING_RUNS` (default 10) → 429; `mode: live` → 422 (no live runtime exists).
+  - Evidence `evidence/`: canonical JSON (sorted keys, no whitespace, no NaN) + SHA-256 per-run chain (genesis = 64 zeros) over `run_id, seq, timestamp, event_type, actor, safe_payload, previous_hash`; `verify_chain` detects modified, deleted, inserted, reordered and re-linked events; empty chain is not valid. Payloads are allowlisted per event type with bounded scalar values only; anything else is rejected, not stored.
+  - DB: migration `0002` adds `runs.version`, `runs.idempotency_key` (unique), `runs.request_sha256`. SQLite now uses WAL, `BEGIN IMMEDIATE` write transactions and a 10s busy timeout so event sequence allocation is serialised.
+  - `python -m prooflayer_api.seed [--with-runs]` / `make seed`: seeds templates and optionally one queued run per fixture through the normal service (real event chains, actor `seeder`, no statuses or verdicts written directly).
+  - App startup fails fast with "run `make migrate`" if the schema is missing.
+  - Contract `contracts/openapi.yaml` (additive only): `Capabilities` (pinned to the 7 booleans, as proposed in Commit 01), `Template`, `ErrorResponse` schemas; `Idempotency-Key` header; `limit` params; 404/409/422/429 responses; `Event.event_type`/`actor` enums.
+  - `docker-compose.yml`: host port configurable via `API_PORT` (8000 was taken on the dev host).
+  - Fixed `tests/test_repo_hygiene.py`, which failed on `main` after Commit 02 because it allowed only the root `.env.example` and not `apps/web/.env.example`.
+- Exact commands/tests run + PASS/FAIL (local, macOS, Python 3.12):
+  - Baseline on merged `main` (`cffbfa6`): `make test` → FAIL, 1 failed / 43 passed (`test_no_env_files_tracked`, see fix above); after fix 44 passed.
+  - `ruff check .` → PASS; `ruff format --check .` → PASS ("52 files already formatted").
+  - `pytest -q` → PASS ("122 passed in 1.78s"). Includes: create run; invalid scenario/extra fields 422; forbidden transition rejected with no side effects; hash-chain tamper detection; concurrent appends (8 threads × 24 events) → contiguous seq and valid chain; concurrent same-key creates → 1 run; concurrent cancels → 1 transition. One failure during development (reading `run.id` after a failed flush raised PendingRollbackError) was fixed; `tests/test_run_service.py` then passed 5/5 repeated runs.
+  - `python scripts/check_docs.py` → PASS; `alembic upgrade head` + `alembic check` → "No new upgrade operations detected"; `0002` downgrade keeps all 4 enum CHECK constraints.
+  - Real server smoke (`env -i`, no keys, scratch SQLite, port 8766): seed created 3 queued runs; templates listed; create 201; replay 201 + `idempotent-replayed: true`; key reuse with other body 409; invalid template 422; live mode 422; cancel 202; events seq 1-3 linked from genesis; 0 errors in server log.
+  - Docker (daemon running today): `docker compose build api` → built. Hardened `docker run` (read-only, cap_drop ALL, no-new-privileges) → migrations 0001+0002 applied, health 200, POST /runs 201, runs as `uid=10001(prooflayer)`. `API_PORT=8767 docker compose up -d api` → templates served. Containers and volumes removed afterwards.
+  - Frontend (`apps/web`) untouched; its npm checks were not re-run.
+- Security / model cost: no Nebius, OpenShell or Tavily calls; $0 model spend. Runs only reference trusted template IDs; request bodies with commands, repo URLs or other extra fields → 422. Event payloads cannot carry free text, stdout or file content. Hash chain is tamper-evident only: truncating trailing events or rewriting the whole store is not detectable until the detached manifest exists (Commit 11), and a test documents this. **Write endpoints are still unauthenticated**; keep the API bound to 127.0.0.1 and do not deploy publicly.
+- Known blockers / truthfulness notes: no worker advances runs past `queued` yet, so no run has a verdict (by design until Commits 05/07/09). `repo_sha` is "unpinned".
+- For Ancy (Commit 04): `apps/web/lib/fixtures/templates.ts` lists `denied-secret-read` as expected `INCONCLUSIVE`, but `benchmarks/fixture_manifest.json` and `GET /templates` say `FAILED` (zero forbidden attempts is a required check). `GET /templates` returns `id, title, description, allowed_paths, read_denied_paths, required_checks, policy_version, repo_sha, expected_verdict` (see `contracts/openapi.yaml` `Template`).
+- Confirm next contributor pulled merged main: no (awaiting review/merge).
+- Next handoff (Ancy, Commit 04): `git fetch origin && git switch main && git pull --ff-only origin main`, `make install && make migrate && make seed && make run`. Swap `lib/fixtures/` for `GET /templates` and `GET /runs`; build `/runs/[id]` from `GET /runs/{id}` + polling `GET /runs/{id}/events?after_seq=<last seq>`; launch with `POST /runs` and an `Idempotency-Key` per click (CORS already allows the header and exposes `Idempotent-Replayed`). Runs will sit in `queued` with no verdict; show that state plainly rather than animating progress.

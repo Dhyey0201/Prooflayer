@@ -1,4 +1,4 @@
-"""Secrets must stay out of git; only the example env file is tracked."""
+"""Secrets must stay out of git; only example env files are tracked."""
 
 from __future__ import annotations
 
@@ -49,8 +49,9 @@ def test_env_example_is_not_ignored() -> None:
 @needs_git
 def test_no_env_files_tracked() -> None:
     tracked = _git("ls-files").stdout.splitlines()
-    env_files = [p for p in tracked if Path(p).name.startswith(".env")]
-    assert set(env_files) <= {".env.example"}
+    env_names = {Path(p).name for p in tracked if Path(p).name.startswith(".env")}
+    # Per-app examples (e.g. apps/web/.env.example) are fine; real env files are not.
+    assert env_names <= {".env.example"}
 
 
 def test_env_example_has_no_real_values() -> None:
