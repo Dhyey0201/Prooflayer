@@ -2,7 +2,11 @@ import type {
   ApiErrorBody,
   ApiErrorEnvelope,
   CapabilitiesResponse,
+  Event,
   HealthResponse,
+  Run,
+  RunCreate,
+  Template,
 } from "./types";
 
 /**
@@ -39,7 +43,10 @@ function isErrorEnvelope(value: unknown): value is ApiErrorEnvelope {
   );
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestRaw<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<{ data: T; response: Response }> {
   const url = `${getApiBaseUrl()}${path}`;
   let response: Response;
   try {
@@ -75,7 +82,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     });
   }
 
-  return (await response.json()) as T;
+  return { data: (await response.json()) as T, response };
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const { data } = await requestRaw<T>(path, init);
+  return data;
 }
 
 export function getHealth(init?: RequestInit): Promise<HealthResponse> {
@@ -86,4 +98,63 @@ export function getCapabilities(
   init?: RequestInit,
 ): Promise<CapabilitiesResponse> {
   return request<CapabilitiesResponse>("/capabilities", init);
+}
+
+export function getTemplates(init?: RequestInit): Promise<Template[]> {
+  return request<Template[]>("/templates", init);
+}
+
+export function listRuns(
+  limit = 50,
+  init?: RequestInit,
+): Promise<Run[]> {
+  return request<Run[]>(`/runs?limit=${limit}`, init);
+}
+
+export interface CreateRunResult {
+  run: Run;
+  replayed: boolean;
+}
+
+/**
+ * Creates a fixture run. `idempotencyKey` should be unique per user action
+ * (e.g. one `crypto.randomUUID()` per "Launch run" click) so a retried
+ * request replays the original run instead of creating a duplicate.
+ */
+export async function createRun(
+  body: RunCreate,
+  idempotencyKey: string,
+  init?: RequestInit,
+): Promise<CreateRunResult> {
+  const { data, response } = await requestRaw<Run>("/runs", {
+    ...init,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+      ...init?.headers,
+    },
+    body: JSON.stringify(body),
+  });
+  return { run: data, replayed: response.headers.get("Idempotent-Replayed") === "true" };
+}
+
+export function getRun(runId: string, init?: RequestInit): Promise<Run> {
+  return request<Run>(`/runs/${runId}`, init);
+}
+
+export function getRunEvents(
+  runId: string,
+  afterSeq = 0,
+  limit = 1000,
+  init?: RequestInit,
+): Promise<Event[]> {
+  return request<Event[]>(
+    `/runs/${runId}/events?after_seq=${afterSeq}&limit=${limit}`,
+    init,
+  );
+}
+
+export function cancelRun(runId: string, init?: RequestInit): Promise<Run> {
+  return request<Run>(`/runs/${runId}/cancel`, { ...init, method: "POST" });
 }

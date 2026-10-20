@@ -1,10 +1,16 @@
+"use client";
+
+import { ErrorPanel } from "@/components/ErrorPanel";
 import { RunsTable } from "@/components/dashboard/RunsTable";
 import { ScenarioCard } from "@/components/dashboard/ScenarioCard";
 import { SystemStatusPanel } from "@/components/dashboard/SystemStatusPanel";
-import { SAMPLE_RUNS } from "@/lib/fixtures/runs";
-import { SAMPLE_SCENARIO_TEMPLATES } from "@/lib/fixtures/templates";
+import { useRuns } from "@/lib/api/useRuns";
+import { useTemplates } from "@/lib/api/useTemplates";
 
 export default function DashboardPage() {
+  const templates = useTemplates();
+  const runs = useRuns(5);
+
   return (
     <div className="space-y-10">
       <header>
@@ -24,21 +30,51 @@ export default function DashboardPage() {
             Scenarios
           </h2>
           <p className="text-sm text-muted">
-            Three pre-seeded fixtures the demo replays end to end.
+            Three pre-seeded fixtures the demo replays end to end. Launching a
+            run creates it in the backend&apos;s <code>queued</code> state — no
+            worker advances it yet, so it will not reach a verdict.
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {SAMPLE_SCENARIO_TEMPLATES.map((template) => (
-            <ScenarioCard key={template.id} template={template} />
-          ))}
-        </div>
+        {templates.phase === "loading" && (
+          <p role="status" className="text-sm text-muted">
+            Loading scenarios&hellip;
+          </p>
+        )}
+        {templates.phase === "error" && (
+          <ErrorPanel
+            message={templates.message}
+            requestId={templates.requestId}
+            onRetry={templates.refresh}
+          />
+        )}
+        {templates.phase === "ready" && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {templates.data.map((template) => (
+              <ScenarioCard key={template.id} template={template} />
+            ))}
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="recent-runs-heading" className="space-y-4">
         <h2 id="recent-runs-heading" className="text-lg font-semibold text-foreground">
           Recent runs
         </h2>
-        <RunsTable runs={SAMPLE_RUNS} isSample caption="Recent runs" />
+        {runs.phase === "loading" && (
+          <p role="status" className="text-sm text-muted">
+            Loading runs&hellip;
+          </p>
+        )}
+        {runs.phase === "error" && (
+          <ErrorPanel
+            message={runs.message}
+            requestId={runs.requestId}
+            onRetry={runs.refresh}
+          />
+        )}
+        {runs.phase === "ready" && (
+          <RunsTable runs={runs.data} caption="Recent runs" />
+        )}
       </section>
     </div>
   );

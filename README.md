@@ -80,16 +80,20 @@ npm run dev      # http://localhost:3000; expects the API on :8000 by default
 
 `NEXT_PUBLIC_API_BASE_URL` (see `apps/web/.env.example`) is the only
 configuration the browser reads; it never sees a Nebius, OpenShell or Tavily
-key. `/templates` and `/runs` exist on the backend as of Commit 03; until the
-dashboard is wired to them (Commit 04) the scenario cards and runs table render
-clearly labeled **sample data**, never presented as a live result. See `apps/web/README.md` for scripts (`lint`,
-`typecheck`, `build`, `test`).
+key. The scenario cards, runs list and run detail/trace timeline (`/runs`,
+`/runs/[id]`) are wired to the live `GET /templates`, `GET/POST /runs`,
+`GET /runs/{id}` and `GET /runs/{id}/events` endpoints — no fixture/sample
+data ships in the frontend as of Commit 04. Launching a run creates it in the
+backend's `queued` state; no worker advances it yet (that lands in Commits
+05/07/09), so it will not reach a verdict in this build — the UI says so
+rather than animating fake progress. See `apps/web/README.md` for scripts
+(`lint`, `typecheck`, `build`, `test`).
 
 ## Repository layout
 | Path | Purpose |
 |---|---|
 | `apps/api` | FastAPI service (`prooflayer_api`), Alembic migrations, Dockerfile |
-| `apps/web` | Next.js (App Router) + TypeScript + Tailwind dashboard (Commit 02) |
+| `apps/web` | Next.js (App Router) + TypeScript + Tailwind dashboard |
 | `packages/contracts` | Python loaders for the canonical contracts |
 | `contracts/` | `openapi.yaml`, `schemas.json` (source of truth) |
 | `tests/` | pytest suite (API, config, contracts, migrations, repo hygiene) |
