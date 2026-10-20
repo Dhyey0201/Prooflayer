@@ -1,28 +1,40 @@
-import { VerdictPill } from "@/components/StatusPill";
-import type { ScenarioTemplate } from "@/lib/fixtures/templates";
+"use client";
 
-export function ScenarioCard({ template }: { template: ScenarioTemplate }) {
+import { useId, useState } from "react";
+
+import { LaunchRunButton } from "@/components/dashboard/LaunchRunButton";
+import { PolicyPreview } from "@/components/dashboard/PolicyPreview";
+import type { Template } from "@/lib/api/types";
+
+export function ScenarioCard({ template }: { template: Template }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const previewId = useId();
+
   return (
     <article className="flex h-full flex-col justify-between rounded-xl border border-border bg-surface/60 p-5 transition-colors hover:border-accent/40">
       <div>
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-base font-semibold text-foreground">{template.name}</h3>
-          <VerdictPill verdict={template.expectedVerdict} />
-        </div>
-        <p className="mt-2 text-sm text-muted">{template.summary}</p>
-        <p className="mt-3 text-sm leading-relaxed text-foreground/80">
+        <h3 className="text-base font-semibold text-foreground">{template.title}</h3>
+        <p className="mt-2 text-sm leading-relaxed text-foreground/80">
           {template.description}
         </p>
+        <button
+          type="button"
+          onClick={() => setPreviewOpen((open) => !open)}
+          aria-expanded={previewOpen}
+          aria-controls={previewId}
+          className="mt-3 text-xs font-medium text-accent hover:underline"
+        >
+          {previewOpen ? "Hide policy preview" : "Review policy preview"}
+        </button>
+        {previewOpen && (
+          <div id={previewId}>
+            <PolicyPreview template={template} />
+          </div>
+        )}
       </div>
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        title="Run creation lands in Commit 03/04"
-        className="mt-4 w-full cursor-not-allowed rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted"
-      >
-        Launch run (coming soon)
-      </button>
+      <div className="mt-4">
+        <LaunchRunButton templateId={template.id} />
+      </div>
     </article>
   );
 }

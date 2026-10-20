@@ -63,26 +63,24 @@ export function SystemStatusPanel() {
               className="h-2.5 w-2.5 rounded-full bg-emerald-400"
             />
             <p className="text-sm text-foreground">
-              Healthy — <span className="font-mono text-xs text-muted">{status.data.health?.status}</span>
+              Healthy — <span className="font-mono text-xs text-muted">{status.data.health.status}</span>
             </p>
           </div>
-          {status.data.capabilities && (
-            <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-              {Object.entries(status.data.capabilities).map(([key, value]) => (
-                <div
-                  key={key}
-                  className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
+          <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+            {Object.entries(status.data.capabilities).map(([key, value]) => (
+              <div
+                key={key}
+                className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
+              >
+                <dt className="text-muted">{CAPABILITY_LABELS[key] ?? key}</dt>
+                <dd
+                  className={`font-mono font-semibold ${value ? "text-emerald-300" : "text-muted"}`}
                 >
-                  <dt className="text-muted">{CAPABILITY_LABELS[key] ?? key}</dt>
-                  <dd
-                    className={`font-mono font-semibold ${value ? "text-emerald-300" : "text-muted"}`}
-                  >
-                    {value ? "true" : "false"}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
+                  {value ? "true" : "false"}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
       )}
     </section>
