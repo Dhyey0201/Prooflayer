@@ -7,3 +7,6 @@ pydantic-settings==2.16.0
 SQLAlchemy==2.1.5
 alembic==1.20.0
 PyYAML==6.0.3
+# Nebius Token Factory client (OpenAI-compatible); 3.x uses httpx2.
+openai==3.36.0
+httpx2==2.13.1

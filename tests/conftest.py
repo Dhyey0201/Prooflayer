@@ -24,6 +24,11 @@ _SETTINGS_ENV = (
     "NEBIUS_MODEL_ID",
     "TAVILY_API_KEY",
     "PROOFLAYER_MAX_PENDING_RUNS",
+    "PROOFLAYER_WORKER_ENABLED",
+    "SANDBOX_DRIVER",
+    "OPENSHELL_BIN",
+    "PROOFLAYER_SANDBOX_IMAGE",
+    "RUN_LIVE_INTEGRATION",
 )
 
 # Obviously fake; used to prove key values never leave the server.
@@ -40,7 +45,9 @@ def _isolated_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def make_settings() -> Callable[..., Settings]:
     def _make(**values: object) -> Settings:
-        # _env_file=None: never read a local .env during tests.
+        # _env_file=None: never read a local .env during tests. The background
+        # worker is off unless a test turns it on, so runs stay where tests put them.
+        values.setdefault("PROOFLAYER_WORKER_ENABLED", False)
         return Settings(_env_file=None, **values)
 
     return _make

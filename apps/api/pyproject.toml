@@ -13,4 +13,6 @@ dependencies = [
     "SQLAlchemy>=2",
     "alembic",
     "PyYAML",
+    "openai",
+    "httpx2",
 ]

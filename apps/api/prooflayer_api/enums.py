@@ -44,6 +44,14 @@ class CheckOutcome(StrEnum):
 class EventType(StrEnum):
     RUN_CREATED = "run.created"
     RUN_STATUS_CHANGED = "run.status_changed"
+    SANDBOX_PROVISIONED = "sandbox.provisioned"
+    SANDBOX_RELEASED = "sandbox.released"
+    MODEL_CALLED = "model.called"
+    AGENT_ACTION_PROPOSED = "agent.action_proposed"
+    TOOL_RESULT = "tool.result"
+    POLICY_DENIED = "policy.denied"
+    AGENT_CLAIMED = "agent.claimed"
+    AGENT_FINISHED = "agent.finished"
 
 
 class Actor(StrEnum):

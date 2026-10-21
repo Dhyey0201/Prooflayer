@@ -79,7 +79,17 @@ export interface Run {
   verdict: Verdict;
 }
 
-export type EventType = "run.created" | "run.status_changed";
+export type EventType =
+  | "run.created"
+  | "run.status_changed"
+  | "sandbox.provisioned"
+  | "sandbox.released"
+  | "model.called"
+  | "agent.action_proposed"
+  | "tool.result"
+  | "policy.denied"
+  | "agent.claimed"
+  | "agent.finished";
 
 export type EventActor = "api" | "orchestrator" | "seeder";
 

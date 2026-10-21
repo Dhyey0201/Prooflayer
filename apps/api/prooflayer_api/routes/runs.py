@@ -10,13 +10,15 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings, get_settings
 from ..db.deps import get_session
-from ..enums import ErrorCode
+from ..enums import ErrorCode, RunMode
 from ..errors import ApiError
 from ..evidence.events import event_to_wire, list_events
 from ..schemas import EventOut, RunCreate, RunOut, TemplateOut
 from ..services import runs as run_service
 from ..services.fixtures import FIXTURES
+from ..services.runtime import live_runtime_available
 from ..services.state_machine import InvalidTransitionError
+from .system import SandboxStatusDep
 
 router = APIRouter(tags=["runs"])
 
@@ -53,6 +55,7 @@ def create_run(
     response: Response,
     session: SessionDep,
     settings: SettingsDep,
+    sandbox: SandboxStatusDep,
     idempotency_key: Annotated[
         str | None, Header(alias="Idempotency-Key", pattern=IDEMPOTENCY_KEY_PATTERN)
     ] = None,
@@ -64,10 +67,14 @@ def create_run(
             mode=body.mode,
             max_pending_runs=settings.max_pending_runs,
             idempotency_key=idempotency_key,
+            live_available=body.mode is RunMode.LIVE and live_runtime_available(settings, sandbox),
         )
     except run_service.LiveModeUnavailableError:
         raise ApiError(
-            422, ErrorCode.VALIDATION_ERROR, "Live mode is not available in this build"
+            422,
+            ErrorCode.VALIDATION_ERROR,
+            f"Mode '{body.mode}' is not available: live runs need a live model and an "
+            "enforcing OpenShell sandbox",
         ) from None
     except run_service.IdempotencyConflictError:
         raise ApiError(

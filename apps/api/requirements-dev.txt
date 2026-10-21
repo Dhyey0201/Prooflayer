@@ -1,5 +1,4 @@
 -r requirements.txt
 pytest==9.1.1
-# Starlette 1.x TestClient requires httpx2 (httpx is deprecated there).
-httpx2==2.13.1
+# httpx2 (pinned in requirements.txt) also backs Starlette 1.x's TestClient.
 ruff==0.17.1
