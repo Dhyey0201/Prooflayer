@@ -6,12 +6,20 @@ API responses. The service boots with no cloud credentials in mock mode.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from functools import lru_cache
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_NEBIUS_BASE_URL = "https://api.tokenfactory.us-central1.nebius.com/v1/"
+
+
+class SandboxDriverName(StrEnum):
+    # Deterministic in-process double; reports enforced=False on every event.
+    MOCK = "mock"
+    # NVIDIA OpenShell CLI + gateway; enforcement is confirmed per sandbox.
+    OPENSHELL = "openshell"
 
 
 class Settings(BaseSettings):
@@ -36,8 +44,31 @@ class Settings(BaseSettings):
         default="nvidia/nemotron-3-super-120b-a12b", alias="NEBIUS_MODEL_ID"
     )
     tavily_api_key: SecretStr | None = Field(default=None, alias="TAVILY_API_KEY")
+    model_timeout_seconds: float = Field(
+        default=30.0, gt=0, le=300, alias="PROOFLAYER_MODEL_TIMEOUT_SECONDS"
+    )
+    # Extra attempts after a retryable model error (timeout, 429, 5xx).
+    model_max_retries: int = Field(default=2, ge=0, le=5, alias="PROOFLAYER_MODEL_MAX_RETRIES")
 
-    # Hard limits (enforced by later milestones; declared here so they are configured once).
+    sandbox_driver: SandboxDriverName = Field(
+        default=SandboxDriverName.MOCK, alias="SANDBOX_DRIVER"
+    )
+    openshell_bin: str = Field(default="openshell", alias="OPENSHELL_BIN")
+    # Local image holding the fixture workspaces (`make sandbox-image`).
+    sandbox_image: str = Field(
+        default="prooflayer-workspace:0.1.0", alias="PROOFLAYER_SANDBOX_IMAGE"
+    )
+    sandbox_cpu: str = Field(default="1", pattern=r"^[0-9]+(\.[0-9]+)?m?$", alias="SANDBOX_CPU")
+    sandbox_memory: str = Field(default="1Gi", pattern=r"^[0-9]+(Mi|Gi)$", alias="SANDBOX_MEMORY")
+
+    # Background worker that advances queued runs; tests turn it off.
+    worker_enabled: bool = Field(default=True, alias="PROOFLAYER_WORKER_ENABLED")
+    worker_poll_seconds: float = Field(
+        default=1.0, gt=0, le=60, alias="PROOFLAYER_WORKER_POLL_SECONDS"
+    )
+
+    # Hard limits, configured once. Concurrency, run duration, output bytes, model
+    # tokens/calls and agent steps are enforced by the worker and agent loop.
     max_concurrent_runs: int = Field(default=1, ge=1, le=4, alias="PROOFLAYER_MAX_CONCURRENT_RUNS")
     # Non-terminal runs allowed at once; POST /runs returns 429 beyond this.
     max_pending_runs: int = Field(default=10, ge=1, le=100, alias="PROOFLAYER_MAX_PENDING_RUNS")
@@ -48,6 +79,10 @@ class Settings(BaseSettings):
     max_model_tokens: int = Field(
         default=20_000, ge=1, le=200_000, alias="PROOFLAYER_MAX_MODEL_TOKENS"
     )
+    max_model_calls_per_run: int = Field(
+        default=12, ge=1, le=100, alias="PROOFLAYER_MAX_MODEL_CALLS_PER_RUN"
+    )
+    max_agent_steps: int = Field(default=8, ge=1, le=50, alias="PROOFLAYER_MAX_AGENT_STEPS")
 
     @model_validator(mode="after")
     def _require_key_outside_mock_mode(self) -> Settings:

@@ -137,7 +137,7 @@ def test_invalid_scenario_or_settings_is_422(api: TestClient, body: dict) -> Non
 def test_live_mode_is_refused_until_a_live_runtime_exists(api: TestClient) -> None:
     response = api.post("/api/v1/runs", json={"template_id": "success-validation", "mode": "live"})
     assert response.status_code == 422
-    assert "Live mode is not available" in response.json()["error"]["message"]
+    assert "enforcing OpenShell sandbox" in response.json()["error"]["message"]
     assert api.get("/api/v1/runs").json() == []
 
 

@@ -29,7 +29,7 @@ paths:
         '200': {description: Run summaries, newest first, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Run'}}}}}
     post:
       operationId: createRun
-      description: Creates a fixture run in `queued` state. `live` mode returns 422 until a live agent runtime exists.
+      description: Creates a run in `queued` state; the worker then advances it. `fixture` runs use the deterministic scripted agent in the configured sandbox. `live` runs use Nemotron and require a live model AND an enforcing OpenShell sandbox, otherwise 422. Until the independent verifier exists (Commit 09) a finished run concludes `inconclusive`.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -98,8 +98,8 @@ components:
         mock_mode: {type: boolean}
         nebius_configured: {type: boolean}
         live_model_enabled: {type: boolean}
-        openshell_available: {type: boolean}
-        sandbox_enforced: {type: boolean}
+        openshell_available: {type: boolean, description: "SANDBOX_DRIVER=openshell and the CLI + gateway respond"}
+        sandbox_enforced: {type: boolean, description: "Runs execute under OpenShell; each sandbox's Landlock enforcement is re-confirmed at provisioning"}
         independent_verifier_available: {type: boolean}
         tavily_enabled: {type: boolean}
     Template:
@@ -152,7 +152,7 @@ components:
         run_id: {type: string, format: uuid}
         seq: {type: integer, minimum: 1}
         timestamp: {type: string, format: date-time}
-        event_type: {type: string, enum: [run.created, run.status_changed]}
+        event_type: {type: string, enum: [run.created, run.status_changed, sandbox.provisioned, sandbox.released, model.called, agent.action_proposed, tool.result, policy.denied, agent.claimed, agent.finished]}
         actor: {type: string, enum: [api, orchestrator, seeder]}
         safe_payload: {type: object, description: Allowlisted scalar fields only}
         previous_hash: {type: string, description: "64 zeros for seq 1"}

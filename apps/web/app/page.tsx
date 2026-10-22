@@ -31,8 +31,9 @@ export default function DashboardPage() {
           </h2>
           <p className="text-sm text-muted">
             Three pre-seeded fixtures the demo replays end to end. Launching a
-            run creates it in the backend&apos;s <code>queued</code> state — no
-            worker advances it yet, so it will not reach a verdict.
+            run queues it; the backend worker runs the agent in a sandbox. Until
+            the independent verifier exists, a finished run concludes
+            <code>inconclusive</code>.
           </p>
         </div>
         {templates.phase === "loading" && (

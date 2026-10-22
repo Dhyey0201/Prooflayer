@@ -64,8 +64,8 @@ export function RunDetailView({ runId }: { runId: string }) {
 
         {run.status === "queued" && (
           <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
-            Fixture mode: this run is queued and no worker advances it yet, so it will not reach
-            a verdict in this build. That lands in later commits.
+            Queued: the backend worker picks runs up in order. The independent verifier is not
+            built yet, so a finished run concludes INCONCLUSIVE rather than VERIFIED or FAILED.
           </p>
         )}
 

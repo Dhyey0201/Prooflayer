@@ -7,7 +7,18 @@ import type { Event } from "@/lib/api/types";
 const EVENT_LABELS: Record<Event["event_type"], string> = {
   "run.created": "Run created",
   "run.status_changed": "Status changed",
+  "sandbox.provisioned": "Sandbox provisioned",
+  "sandbox.released": "Sandbox released",
+  "model.called": "Model called",
+  "agent.action_proposed": "Agent proposed action",
+  "tool.result": "Tool result",
+  "policy.denied": "Policy denied",
+  "agent.claimed": "Agent claim (untrusted)",
+  "agent.finished": "Agent finished",
 };
+
+// Fields shown inline for the newer event types, in this order when present.
+const SUMMARY_FIELDS = ["action", "target", "outcome", "driver", "enforced", "source", "reason"];
 
 function formatTime(value: string): string {
   return new Date(value).toLocaleTimeString(undefined, { hour12: false });
@@ -22,11 +33,17 @@ function EventSummary({ event }: { event: Event }) {
       </span>
     );
   }
-  return (
-    <span className="font-mono text-xs text-muted">
-      {String(event.safe_payload.template_id)} ({String(event.safe_payload.mode)})
-    </span>
+  if (event.event_type === "run.created") {
+    return (
+      <span className="font-mono text-xs text-muted">
+        {String(event.safe_payload.template_id)} ({String(event.safe_payload.mode)})
+      </span>
+    );
+  }
+  const parts = SUMMARY_FIELDS.filter((key) => key in event.safe_payload).map(
+    (key) => `${key}=${String(event.safe_payload[key])}`,
   );
+  return <span className="font-mono text-xs text-muted">{parts.join(" ")}</span>;
 }
 
 export function EventTrace({ events }: { events: Event[] }) {

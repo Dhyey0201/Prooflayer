@@ -28,11 +28,12 @@ A developer launches a bounded AI coding task, watches its actions in a real san
 - README, open-source license at repository root, public repo, live demo URL, <=3min YouTube video, and tool feedback ready.
 
 ## Quickstart (backend, mock mode, no cloud keys)
-> **Security warning.** This is a hackathon prototype. Mock mode uses deterministic
-> test doubles: **no sandbox is enforced and no Nebius call is made**, and
-> `/api/v1/capabilities` reports `sandbox_enforced: false`. Never put real credentials
-> in fixtures, never commit `.env`, and do not expose the API publicly before write
-> operations are authenticated.
+> **Security warning.** This is a hackathon prototype. By default (`SANDBOX_DRIVER=mock`,
+> mock mode) runs use deterministic test doubles: **no sandbox is enforced, no test is
+> executed and no Nebius call is made**; every event says so (`enforced: false`,
+> `simulated: true`, provider `scripted`) and `/api/v1/capabilities` reports
+> `sandbox_enforced: false`. Never put real credentials in fixtures, never commit `.env`,
+> and do not expose the API publicly before write operations are authenticated.
 
 Requires Python 3.12+ and `make`.
 
@@ -56,9 +57,26 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/runs \
 curl -s http://127.0.0.1:8000/api/v1/runs/<id>/events   # hash-chained evidence events
 ```
 
-A new run is persisted in `queued` state with a hash-chained event log. **No agent,
-sandbox or verifier executes it yet** (Commits 05/07/09), so no run reaches a
-verdict; `mode: "live"` returns 422 until a live runtime exists.
+A new run is queued and the background worker executes it: provision a sandbox,
+run the bounded agent (scripted in `fixture` mode, Nemotron in `live` mode), release
+the sandbox, record the agent's claim. Every step is a hash-chained event. **The
+independent verifier is not built yet (Commit 09)**, so a finished run concludes
+`inconclusive` (`independent_verifier_unavailable`), never `verified`. `mode: "live"`
+returns 422 unless a Nebius key is set, mock mode is off **and** an OpenShell sandbox
+is reachable.
+
+### Real sandbox and live model (opt-in)
+
+```bash
+# NVIDIA OpenShell CLI + gateway (macOS: Docker Desktop), see docs.nvidia.com/openshell
+make sandbox-image            # one workspace image per fixture (needs Docker)
+make policy FIXTURE=denied-secret-read   # print the generated OpenShell policy + sha256
+SANDBOX_DRIVER=openshell make run
+RUN_LIVE_INTEGRATION=1 NEBIUS_API_KEY=... make live-smoke   # real Nemotron + OpenShell checks
+```
+
+The OpenShell driver counts a sandbox as enforced only after its log shows the
+Landlock ruleset applied; otherwise the run ends in `error`, never "secure".
 
 Optional configuration: `cp .env.example .env` (git-ignored). Setting
 `PROOFLAYER_MOCK_MODE=false` requires `NEBIUS_API_KEY`; the API refuses to start otherwise.
@@ -93,6 +111,9 @@ rather than animating fake progress. See `apps/web/README.md` for scripts
 | Path | Purpose |
 |---|---|
 | `apps/api` | FastAPI service (`prooflayer_api`), Alembic migrations, Dockerfile |
+| `apps/api/prooflayer_api/{ai,agent,sandbox}` | Nemotron adapter, bounded agent loop, OpenShell + mock sandbox drivers |
+| `apps/api/prooflayer_api/fixture_workspaces` | Synthetic repos the agent edits (no real secrets) |
+| `infra/sandbox` | OpenShell agent workspace image |
 | `apps/web` | Next.js (App Router) + TypeScript + Tailwind dashboard |
 | `packages/contracts` | Python loaders for the canonical contracts |
 | `contracts/` | `openapi.yaml`, `schemas.json` (source of truth) |

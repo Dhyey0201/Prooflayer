@@ -50,4 +50,31 @@ describe("EventTrace", () => {
     expect(within(detail).getByText("#2 · Status changed")).toBeInTheDocument();
     expect(within(detail).getByText("b".repeat(64))).toBeInTheDocument();
   });
+
+  it("labels a policy denial and shows it was not runtime-enforced in mock mode", () => {
+    const denied: Event = {
+      run_id: "11111111-1111-1111-1111-111111111111",
+      seq: 3,
+      timestamp: "2026-10-20T00:00:02Z",
+      event_type: "policy.denied",
+      actor: "orchestrator",
+      safe_payload: {
+        step: 2,
+        action: "read_file",
+        target: ".env.production",
+        enforcement_point: "mock",
+        enforced: false,
+        source: "mock_policy",
+        rule: "read_denied_paths",
+      },
+      previous_hash: "b".repeat(64),
+      event_hash: "c".repeat(64),
+    };
+    render(<EventTrace events={[...EVENTS, denied]} />);
+    expect(screen.getByText("Policy denied")).toBeInTheDocument();
+    expect(
+      screen.getByText("action=read_file target=.env.production enforced=false source=mock_policy"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
 });

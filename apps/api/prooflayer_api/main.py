@@ -16,6 +16,8 @@ from .errors import UnhandledErrorMiddleware, register_error_handlers
 from .request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 from .routes import runs, system
 from .services.fixtures import seed_templates
+from .services.runtime import Runtime, SandboxStatusCache, build_runtime
+from .services.worker import RunWorker
 
 API_PREFIX = "/api/v1"
 
@@ -24,7 +26,7 @@ class DatabaseNotMigratedError(RuntimeError):
     pass
 
 
-def _lifespan(settings: Settings):
+def _lifespan(settings: Settings, runtime: Runtime | None):
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = make_engine(settings.database_url)
@@ -38,21 +40,32 @@ def _lifespan(settings: Settings):
         with session_factory.begin() as session:
             seed_templates(session)
         app.state.session_factory = session_factory
+        run_runtime = runtime or build_runtime(settings)
+        app.state.runtime = run_runtime
+        app.state.sandbox_status = SandboxStatusCache(run_runtime.driver)
+        worker = RunWorker(session_factory, run_runtime) if settings.worker_enabled else None
+        app.state.worker = worker
+        if worker is not None:
+            worker.start()
         try:
             yield
         finally:
+            if worker is not None:
+                worker.stop()
             engine.dispose()
 
     return lifespan
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, runtime: Runtime | None = None) -> FastAPI:
     if settings is None:
         settings = get_settings()
         overrides = {}
     else:
         overrides = {get_settings: lambda: settings}
-    app = FastAPI(title="ProofLayer API", version=__version__, lifespan=_lifespan(settings))
+    app = FastAPI(
+        title="ProofLayer API", version=__version__, lifespan=_lifespan(settings, runtime)
+    )
     app.dependency_overrides.update(overrides)
 
     register_error_handlers(app)

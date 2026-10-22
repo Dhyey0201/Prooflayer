@@ -66,10 +66,14 @@ def create_run(
     max_pending_runs: int,
     idempotency_key: str | None = None,
     actor: Actor = Actor.API,
+    live_available: bool = False,
 ) -> CreateResult:
-    """Create a run in ``queued`` state. Commits on success."""
-    if mode is not RunMode.FIXTURE:
-        # No live agent runtime exists yet (Commit 05+); never pretend to run one.
+    """Create a run in ``queued`` state. Commits on success.
+
+    ``live`` needs a live model and an enforcing sandbox (``live_available``);
+    ``replay`` has no runtime yet. Neither is ever silently downgraded.
+    """
+    if mode is RunMode.REPLAY or (mode is RunMode.LIVE and not live_available):
         raise LiveModeUnavailableError(mode)
 
     digest = _request_digest(template_id, mode)
@@ -143,13 +147,24 @@ def list_runs(session: Session, limit: int = 50) -> list[Run]:
 
 
 def _apply_transition(
-    session: Session, run: Run, target: RunStatus, *, reason: str, actor: Actor
+    session: Session,
+    run: Run,
+    target: RunStatus,
+    *,
+    reason: str,
+    actor: Actor,
+    model_id: str | None = None,
+    error_code: str | None = None,
 ) -> None:
     run_id, current = run.id, RunStatus(run.status)
     check_transition(current, target)
     now = datetime.now(UTC)
     run.status = target
     run.updated_at = now
+    if model_id is not None:
+        run.model_id = model_id
+    if error_code is not None:
+        run.error_code = error_code
     if target is RunStatus.RUNNING:
         run.started_at = now
     if target in TERMINAL_STATUSES:
@@ -169,7 +184,14 @@ def _apply_transition(
 
 
 def transition_run(
-    session: Session, run_id: str, target: RunStatus, *, reason: str, actor: Actor
+    session: Session,
+    run_id: str,
+    target: RunStatus,
+    *,
+    reason: str,
+    actor: Actor,
+    model_id: str | None = None,
+    error_code: str | None = None,
 ) -> Run:
     """Move a run to ``target`` and record the event. Commits on success.
 
@@ -177,7 +199,15 @@ def transition_run(
     """
     run = get_run(session, run_id)
     try:
-        _apply_transition(session, run, target, reason=reason, actor=actor)
+        _apply_transition(
+            session,
+            run,
+            target,
+            reason=reason,
+            actor=actor,
+            model_id=model_id,
+            error_code=error_code,
+        )
         session.commit()
     except Exception:
         session.rollback()
@@ -192,3 +222,52 @@ def cancel_run(session: Session, run_id: str, *, actor: Actor = Actor.API) -> Ru
         session.rollback()
         return run
     return transition_run(session, run_id, RunStatus.CANCELED, reason="user_requested", actor=actor)
+
+
+def record_agent_claim(session: Session, run_id: str, *, summary: str, tests_passed: bool) -> Run:
+    """Store the agent's untrusted claim with its digest in the hash chain. Commits."""
+    run = get_run(session, run_id)
+    try:
+        run.agent_claim = summary
+        run.updated_at = datetime.now(UTC)
+        try:
+            session.flush()
+        except StaleDataError as exc:
+            raise ConcurrentUpdateError(run_id) from exc
+        append_event(
+            session,
+            run_id,
+            EventType.AGENT_CLAIMED,
+            Actor.ORCHESTRATOR,
+            {
+                "claim_sha256": sha256_hex(summary.encode()),
+                "claim_chars": len(summary),
+                "tests_passed": tests_passed,
+            },
+        )
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    return run
+
+
+def next_queued_run_id(session: Session) -> str | None:
+    run_id = session.scalar(
+        select(Run.id).where(Run.status == RunStatus.QUEUED).order_by(Run.created_at).limit(1)
+    )
+    session.rollback()
+    return run_id
+
+
+def interrupted_run_ids(session: Session) -> list[str]:
+    """Runs a previous worker left mid-flight (provisioning/running/verifying)."""
+    ids = list(
+        session.scalars(
+            select(Run.id).where(
+                Run.status.in_((RunStatus.PROVISIONING, RunStatus.RUNNING, RunStatus.VERIFYING))
+            )
+        )
+    )
+    session.rollback()
+    return ids
