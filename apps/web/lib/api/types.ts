@@ -124,3 +124,22 @@ export interface ApiErrorBody {
 export interface ApiErrorEnvelope {
   error: ApiErrorBody;
 }
+
+/** Mirrors `enums.CheckOutcome`. Not yet produced by the backend (Commit 09). */
+export type CheckOutcome = "PASS" | "FAIL" | "INCONCLUSIVE";
+
+/**
+ * The contract leaves `claims`/`checks` as open objects (no verifier exists
+ * yet to pin their shape) — render them generically, never assume a field.
+ */
+export type CertificateEntry = Record<string, unknown>;
+
+export interface Certificate {
+  schema_version: string;
+  run_id: string;
+  verdict: Exclude<Verdict, null>;
+  claims: CertificateEntry[];
+  checks?: CertificateEntry[];
+  evidence_manifest_sha256: string;
+  limitations?: string[];
+}

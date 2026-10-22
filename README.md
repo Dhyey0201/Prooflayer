@@ -98,14 +98,16 @@ npm run dev      # http://localhost:3000; expects the API on :8000 by default
 
 `NEXT_PUBLIC_API_BASE_URL` (see `apps/web/.env.example`) is the only
 configuration the browser reads; it never sees a Nebius, OpenShell or Tavily
-key. The scenario cards, runs list and run detail/trace timeline (`/runs`,
-`/runs/[id]`) are wired to the live `GET /templates`, `GET/POST /runs`,
-`GET /runs/{id}` and `GET /runs/{id}/events` endpoints — no fixture/sample
-data ships in the frontend as of Commit 04. Launching a run creates it in the
-backend's `queued` state; no worker advances it yet (that lands in Commits
-05/07/09), so it will not reach a verdict in this build — the UI says so
-rather than animating fake progress. See `apps/web/README.md` for scripts
-(`lint`, `typecheck`, `build`, `test`).
+key. The scenario cards, runs list and run detail page are wired to the live
+backend — no fixture/sample data ships in the frontend. A launched run is now
+actually executed by the backend worker and reaches `inconclusive` within
+about a second in mock mode; the run detail page's **Claim inspector** tab
+shows the agent's claim next to the measured evidence (sandbox enforcement,
+observed policy denials) without conflating the two, and the **Certificate**
+tab calls the real `GET /runs/{id}/certificate` — currently always "not
+ready" (404) since the independent verifier doesn't exist yet (Commit 09),
+shown as that rather than a fabricated result. See `apps/web/README.md` for
+scripts (`lint`, `typecheck`, `build`, `test`).
 
 ## Repository layout
 | Path | Purpose |
