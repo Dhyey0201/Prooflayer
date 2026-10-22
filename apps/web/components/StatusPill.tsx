@@ -1,4 +1,4 @@
-import type { RunStatus, Verdict } from "@/lib/api/types";
+import type { CheckOutcome, RunStatus, Verdict } from "@/lib/api/types";
 
 type PillTone = "neutral" | "info" | "success" | "danger" | "warning";
 
@@ -18,6 +18,12 @@ const STATUS_TONE: Record<RunStatus, PillTone> = {
 const VERDICT_TONE: Record<Exclude<Verdict, null>, PillTone> = {
   VERIFIED: "success",
   FAILED: "danger",
+  INCONCLUSIVE: "warning",
+};
+
+const CHECK_OUTCOME_TONE: Record<CheckOutcome, PillTone> = {
+  PASS: "success",
+  FAIL: "danger",
   INCONCLUSIVE: "warning",
 };
 
@@ -48,4 +54,8 @@ export function VerdictPill({ verdict }: { verdict: Verdict }) {
     return <PillBase tone="neutral" label="no verdict" />;
   }
   return <PillBase tone={VERDICT_TONE[verdict]} label={verdict} />;
+}
+
+export function CheckOutcomePill({ outcome }: { outcome: CheckOutcome }) {
+  return <PillBase tone={CHECK_OUTCOME_TONE[outcome]} label={outcome} />;
 }
