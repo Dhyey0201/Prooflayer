@@ -103,4 +103,16 @@ describe("EventTrace", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
   });
+
+  it("highlights a newly-arrived event, but never flags the initial batch on mount", () => {
+    const { rerender } = render(<EventTrace events={EVENTS} />);
+
+    expect(screen.getByRole("button", { name: /Run created/ })).not.toHaveClass("event-arrived");
+
+    const thirdEvent: Event = { ...EVENTS[1], seq: 3, event_hash: "f".repeat(64) };
+    rerender(<EventTrace events={[...EVENTS, thirdEvent]} />);
+
+    expect(screen.getByText("#3").closest("button")).toHaveClass("event-arrived");
+    expect(screen.getByRole("button", { name: /Run created/ })).not.toHaveClass("event-arrived");
+  });
 });

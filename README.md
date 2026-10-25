@@ -124,13 +124,19 @@ npm run dev      # http://localhost:3000; expects the API on :8000 by default
 `NEXT_PUBLIC_API_BASE_URL` (see `apps/web/.env.example`) is the only
 configuration the browser reads; it never sees a Nebius, OpenShell or Tavily
 key. The scenario cards, runs list and run detail page are wired to the live
-backend — no fixture/sample data ships in the frontend. A launched run is now
+backend — no fixture/sample data ships in the frontend. A launched run is
 actually executed by the backend worker and independently verified within a
-few seconds; the run detail page's **Claim inspector** tab shows the agent's
-claim next to the measured evidence without conflating the two, and the
-**Certificate** tab renders the real `GET /runs/{id}/certificate` (404 "not
-ready" until verification finishes). See `apps/web/README.md` for
-scripts (`lint`, `typecheck`, `build`, `test`).
+few seconds. The run detail page has four tabs: **Event trace** (with a
+one-shot highlight on rows that just arrived via polling — never a fake
+animation), **Claim inspector** (the agent's claim next to a real
+before/after comparison against what the verifier measured — SUPPORTED,
+CONTRADICTED or UNVERIFIED, never conflated), **Certificate** (the real
+`GET /runs/{id}/certificate` — verdict, checks, manifest, both evidence
+hashes, JSON export; 404 "not ready" until verification finishes), and
+**Challenges** (request one proof challenge once certified, watch the
+untrusted proposed test and its measured outcome, compared against the
+original certificate check). See `apps/web/README.md` for scripts (`lint`,
+`typecheck`, `build`, `test`).
 
 ## Repository layout
 | Path | Purpose |

@@ -1,4 +1,4 @@
-import type { CheckOutcome, RunStatus, Verdict } from "@/lib/api/types";
+import type { CheckOutcome, ClaimStatus, RunStatus, Verdict } from "@/lib/api/types";
 
 type PillTone = "neutral" | "info" | "success" | "danger" | "warning";
 
@@ -25,6 +25,12 @@ const CHECK_OUTCOME_TONE: Record<CheckOutcome, PillTone> = {
   PASS: "success",
   FAIL: "danger",
   INCONCLUSIVE: "warning",
+};
+
+const CLAIM_STATUS_TONE: Record<ClaimStatus, PillTone> = {
+  SUPPORTED: "success",
+  CONTRADICTED: "danger",
+  UNVERIFIED: "warning",
 };
 
 const TONE_CLASSES: Record<PillTone, string> = {
@@ -58,4 +64,8 @@ export function VerdictPill({ verdict }: { verdict: Verdict }) {
 
 export function CheckOutcomePill({ outcome }: { outcome: CheckOutcome }) {
   return <PillBase tone={CHECK_OUTCOME_TONE[outcome]} label={outcome} />;
+}
+
+export function ClaimStatusPill({ status }: { status: ClaimStatus }) {
+  return <PillBase tone={CLAIM_STATUS_TONE[status]} label={status} />;
 }

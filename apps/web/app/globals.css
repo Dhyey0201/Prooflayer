@@ -50,3 +50,24 @@ body {
   background: var(--accent);
   color: #0b0f17;
 }
+
+/* Highlights an event row once, only when it genuinely just arrived via
+   polling — never a fake/looping animation. */
+@keyframes event-arrive {
+  from {
+    background-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.event-arrived {
+  animation: event-arrive 1.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-arrived {
+    animation: none;
+  }
+}

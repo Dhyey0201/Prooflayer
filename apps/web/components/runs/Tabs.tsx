@@ -33,7 +33,11 @@ export function Tabs({ tabs }: { tabs: TabDef[] }) {
 
   return (
     <div>
-      <div role="tablist" aria-label="Run detail" className="flex gap-1 border-b border-border">
+      <div
+        role="tablist"
+        aria-label="Run detail"
+        className="flex gap-1 overflow-x-auto border-b border-border"
+      >
         {tabs.map((tab, index) => {
           const isSelected = tab.id === active.id;
           return (
@@ -47,7 +51,7 @@ export function Tabs({ tabs }: { tabs: TabDef[] }) {
               tabIndex={isSelected ? 0 : -1}
               onClick={() => setActiveId(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
+              className={`shrink-0 px-3 py-2 text-sm font-medium transition-colors sm:px-4 ${
                 isSelected
                   ? "border-b-2 border-accent text-foreground"
                   : "border-b-2 border-transparent text-muted hover:text-foreground"

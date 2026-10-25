@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Event } from "@/lib/api/types";
 
@@ -27,6 +27,7 @@ const EVENT_LABELS: Record<Event["event_type"], string> = {
 // Fields shown inline for the newer event types, in this order when present.
 const SUMMARY_FIELDS = [
   "requirement_id",
+  "challenge_id",
   "action",
   "target",
   "outcome",
@@ -68,6 +69,26 @@ export function EventTrace({ events }: { events: Event[] }) {
   const [selectedSeq, setSelectedSeq] = useState<number | null>(events[0]?.seq ?? null);
   const selected = events.find((event) => event.seq === selectedSeq) ?? null;
 
+  // Highlights a row once when it's genuinely new since the last render —
+  // i.e. a real event the backend just produced, picked up by polling.
+  // Never a looping/fake animation, and never flags the whole initial batch.
+  const seenSeqs = useRef<Set<number> | null>(null);
+  const [justArrived, setJustArrived] = useState<ReadonlySet<number>>(new Set());
+
+  useEffect(() => {
+    const currentSeqs = new Set(events.map((event) => event.seq));
+    if (seenSeqs.current) {
+      const arrived = events.filter((event) => !seenSeqs.current!.has(event.seq));
+      if (arrived.length > 0) {
+        setJustArrived(new Set(arrived.map((event) => event.seq)));
+        const timer = setTimeout(() => setJustArrived(new Set()), 1600);
+        seenSeqs.current = currentSeqs;
+        return () => clearTimeout(timer);
+      }
+    }
+    seenSeqs.current = currentSeqs;
+  }, [events]);
+
   if (events.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted">
@@ -92,7 +113,7 @@ export function EventTrace({ events }: { events: Event[] }) {
                   isSelected
                     ? "border-accent/50 bg-accent/10"
                     : "border-border bg-surface/60 hover:border-accent/30"
-                }`}
+                } ${justArrived.has(event.seq) ? "event-arrived" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="font-mono text-xs text-muted">#{event.seq}</span>

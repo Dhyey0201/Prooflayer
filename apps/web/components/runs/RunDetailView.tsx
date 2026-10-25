@@ -3,10 +3,12 @@
 import { ErrorPanel } from "@/components/ErrorPanel";
 import { RunStatusPill, VerdictPill } from "@/components/StatusPill";
 import { CertificateExplorer } from "@/components/runs/CertificateExplorer";
+import { ChallengeWorkflow } from "@/components/runs/ChallengeWorkflow";
 import { ClaimInspector } from "@/components/runs/ClaimInspector";
 import { EventTrace } from "@/components/runs/EventTrace";
 import { Tabs } from "@/components/runs/Tabs";
 import { ACTIVE_RUN_STATUSES } from "@/lib/api/types";
+import { useCertificate } from "@/lib/api/useCertificate";
 import { useRunDetail } from "@/lib/api/useRunDetail";
 import { useTemplates } from "@/lib/api/useTemplates";
 
@@ -17,6 +19,14 @@ function formatTimestamp(value: string): string {
 export function RunDetailView({ runId }: { runId: string }) {
   const { cancel, cancelState, ...status } = useRunDetail(runId);
   const templates = useTemplates();
+  // Poll for a certificate while the run has no verdict yet; stop once it
+  // does, or once it's terminal with no verdict coming (canceled/error).
+  const shouldPollCertificate =
+    status.phase === "ready" &&
+    status.run.verdict === null &&
+    status.run.status !== "canceled" &&
+    status.run.status !== "error";
+  const certificate = useCertificate(runId, shouldPollCertificate);
 
   if (status.phase === "loading") {
     return (
@@ -71,10 +81,10 @@ export function RunDetailView({ runId }: { runId: string }) {
           </div>
         </dl>
 
-        {run.status === "queued" && (
-          <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
-            Queued: the backend worker picks runs up in order. The independent verifier is not
-            built yet, so a finished run concludes INCONCLUSIVE rather than VERIFIED or FAILED.
+        {isActive && (
+          <p className="mt-4 rounded-lg border border-sky-400/30 bg-sky-400/10 px-3 py-2 text-xs text-sky-200">
+            In progress — the backend worker runs the agent, then the independent verifier grades
+            it against the pinned checks. The Certificate tab fills in once that finishes.
           </p>
         )}
 
@@ -107,12 +117,30 @@ export function RunDetailView({ runId }: { runId: string }) {
           {
             id: "claim",
             label: "Claim inspector",
-            content: <ClaimInspector run={run} events={events} template={template} />,
+            content: (
+              <ClaimInspector
+                run={run}
+                events={events}
+                template={template}
+                certificate={certificate}
+              />
+            ),
           },
           {
             id: "certificate",
             label: "Certificate",
-            content: <CertificateExplorer runId={run.id} />,
+            content: <CertificateExplorer certificate={certificate} />,
+          },
+          {
+            id: "challenges",
+            label: "Challenges",
+            content: (
+              <ChallengeWorkflow
+                runId={run.id}
+                canChallenge={run.verdict !== null}
+                certificate={certificate}
+              />
+            ),
           },
         ]}
       />
