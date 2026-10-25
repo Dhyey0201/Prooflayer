@@ -29,10 +29,12 @@ A developer launches a bounded AI coding task, watches its actions in a real san
 
 ## Quickstart (backend, mock mode, no cloud keys)
 > **Security warning.** This is a hackathon prototype. By default (`SANDBOX_DRIVER=mock`,
-> mock mode) runs use deterministic test doubles: **no sandbox is enforced, no test is
-> executed and no Nebius call is made**; every event says so (`enforced: false`,
-> `simulated: true`, provider `scripted`) and `/api/v1/capabilities` reports
-> `sandbox_enforced: false`. Never put real credentials in fixtures, never commit `.env`,
+> mock mode) the *agent* side uses deterministic test doubles: **no agent sandbox is
+> enforced, the agent's own checks are simulated and no Nebius call is made**; every event
+> says so (`enforced: false`, `simulated: true`, provider `scripted`) and
+> `/api/v1/capabilities` reports `sandbox_enforced: false`. The independent verifier
+> does execute the pinned tests, in a network-less Docker container (container isolation,
+> not OpenShell); without Docker it reports every executed check INCONCLUSIVE. Never put real credentials in fixtures, never commit `.env`,
 > and do not expose the API publicly before write operations are authenticated.
 
 Requires Python 3.12+ and `make`.
@@ -41,6 +43,7 @@ Requires Python 3.12+ and `make`.
 git clone https://github.com/Dhyey0201/Prooflayer.git && cd Prooflayer
 make install                  # .venv + pinned deps from apps/api/requirements-dev.txt
 make lint test check-docs     # ruff check, ruff format --check, pytest -q, handoff check
+make verifier-image           # independent verifier image (needs Docker; else INCONCLUSIVE)
 make seed                     # optional: one queued fixture run per template
 make run                      # alembic upgrade head, then API on http://127.0.0.1:8000
 ```
@@ -55,15 +58,37 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/runs \
   -H 'Content-Type: application/json' -H 'Idempotency-Key: demo-run-0001' \
   -d '{"template_id":"false-success-auth","mode":"fixture"}'
 curl -s http://127.0.0.1:8000/api/v1/runs/<id>/events   # hash-chained evidence events
+curl -s http://127.0.0.1:8000/api/v1/runs/<id>/checks        # independent check results
+curl -s http://127.0.0.1:8000/api/v1/runs/<id>/certificate   # evidence certificate
+curl -s -X POST http://127.0.0.1:8000/api/v1/runs/<id>/challenge   # proof challenge
+make verify-certificate RUN=<id>   # offline check against events + detached ledger
 ```
 
 A new run is queued and the background worker executes it: provision a sandbox,
-run the bounded agent (scripted in `fixture` mode, Nemotron in `live` mode), release
-the sandbox, record the agent's claim. Every step is a hash-chained event. **The
-independent verifier is not built yet (Commit 09)**, so a finished run concludes
-`inconclusive` (`independent_verifier_unavailable`), never `verified`. `mode: "live"`
-returns 422 unless a Nebius key is set, mock mode is off **and** an OpenShell sandbox
-is reachable.
+run the bounded agent (scripted in `fixture` mode, Nemotron in `live` mode), snapshot
+its workspace, release the sandbox, record the agent's claim. Then the **independent
+verifier** grades it: each `required_check` maps to a pinned template
+(`verifier/checks.py`). The full pytest suite runs in a fresh container (`--network none`,
+read-only root, all capabilities dropped, non-root UID 10002, CPU/memory/PID/time caps,
+workspace streamed in on stdin, no host mounts) on a tree rebuilt from the
+digest-pinned fixture baseline plus only the agent's allowed files; the allowlist diff and
+forbidden-access attempts are measured from the snapshot and the recorded events. Any
+FAIL gives `failed`; all PASS with a valid event chain gives `verified`; anything
+unmeasured gives `inconclusive`. The agent's claim is only compared against the result
+(`SUPPORTED` / `CONTRADICTED` / `UNVERIFIED`). The certificate's manifest digest is also
+appended to a detached ledger (`PROOFLAYER_EVIDENCE_LEDGER`), so
+`python -m prooflayer_api.evidence.verify_cli` can detect edits to events, check results
+or even a full database rewrite. Nothing is signed: this is tamper evidence, not
+non-repudiation. `mode: "live"` returns 422 unless a Nebius key is set, mock mode is off
+**and** an OpenShell sandbox is reachable.
+
+A **proof challenge** (`POST /runs/{id}/challenge`, certified runs only) asks the model
+(scripted in fixture mode, Nemotron in live mode) for one pytest test matching
+`contracts/schemas.json`. It is statically validated (AST: import allowlist, no
+eval/open/dunder/monkeypatch, declarative module level; *not* a security boundary) and
+only then run by the verifier against the run's recorded workspace. Outcomes come from
+the exit code; rejected proposals are stored for review but never executed, and a
+challenge never changes the certificate.
 
 ### Real sandbox and live model (opt-in)
 
@@ -100,13 +125,11 @@ npm run dev      # http://localhost:3000; expects the API on :8000 by default
 configuration the browser reads; it never sees a Nebius, OpenShell or Tavily
 key. The scenario cards, runs list and run detail page are wired to the live
 backend — no fixture/sample data ships in the frontend. A launched run is now
-actually executed by the backend worker and reaches `inconclusive` within
-about a second in mock mode; the run detail page's **Claim inspector** tab
-shows the agent's claim next to the measured evidence (sandbox enforcement,
-observed policy denials) without conflating the two, and the **Certificate**
-tab calls the real `GET /runs/{id}/certificate` — currently always "not
-ready" (404) since the independent verifier doesn't exist yet (Commit 09),
-shown as that rather than a fabricated result. See `apps/web/README.md` for
+actually executed by the backend worker and independently verified within a
+few seconds; the run detail page's **Claim inspector** tab shows the agent's
+claim next to the measured evidence without conflating the two, and the
+**Certificate** tab renders the real `GET /runs/{id}/certificate` (404 "not
+ready" until verification finishes). See `apps/web/README.md` for
 scripts (`lint`, `typecheck`, `build`, `test`).
 
 ## Repository layout
@@ -115,7 +138,9 @@ scripts (`lint`, `typecheck`, `build`, `test`).
 | `apps/api` | FastAPI service (`prooflayer_api`), Alembic migrations, Dockerfile |
 | `apps/api/prooflayer_api/{ai,agent,sandbox}` | Nemotron adapter, bounded agent loop, OpenShell + mock sandbox drivers |
 | `apps/api/prooflayer_api/fixture_workspaces` | Synthetic repos the agent edits (no real secrets) |
+| `apps/api/prooflayer_api/verifier` | Independent verifier: pinned checks, Docker driver, certificate, challenge validation |
 | `infra/sandbox` | OpenShell agent workspace image |
+| `infra/verifier` | Independent verifier image and its trusted entrypoint |
 | `apps/web` | Next.js (App Router) + TypeScript + Tailwind dashboard |
 | `packages/contracts` | Python loaders for the canonical contracts |
 | `contracts/` | `openapi.yaml`, `schemas.json` (source of truth) |

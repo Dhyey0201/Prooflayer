@@ -9,6 +9,7 @@ persists the measurements, never the output itself.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
@@ -128,6 +129,14 @@ class SandboxSession(Protocol):
 
     def drain_denials(self) -> list[Denial]:
         """Denials observed out of band (e.g. network) since the last call."""
+        ...
+
+    def snapshot(self, paths: Sequence[str]) -> dict[str, bytes | None]:
+        """Current bytes of each path after the agent ran (None = absent).
+
+        A path that could not be read reliably is left out, so the verifier
+        reports the workspace diff as incomplete instead of guessing.
+        """
         ...
 
     def release(self) -> None: ...

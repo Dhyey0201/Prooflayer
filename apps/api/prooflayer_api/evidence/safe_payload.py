@@ -59,6 +59,66 @@ ALLOWED_PAYLOAD_KEYS: dict[EventType, frozenset[str]] = {
     EventType.AGENT_FINISHED: frozenset(
         {"outcome", "steps", "model_calls", "total_tokens", "model_id", "detail"}
     ),
+    # Digests and counts of the agent's workspace; file contents are never stored here.
+    EventType.WORKSPACE_SNAPSHOT: frozenset(
+        {
+            "worktree_digest",
+            "baseline_digest",
+            "files_observed",
+            "changed_files",
+            "outside_allowlist",
+            "unreadable_files",
+            "complete",
+        }
+    ),
+    EventType.CHECK_COMPLETED: frozenset(
+        {
+            "requirement_id",
+            "kind",
+            "outcome",
+            "reason",
+            "command_template_id",
+            "exit_code",
+            "output_sha256",
+            "output_bytes",
+            "duration_ms",
+            "evidence_ref",
+            "driver",
+            "isolation",
+            "network",
+            "image_id",
+        }
+    ),
+    EventType.CERTIFICATE_ISSUED: frozenset(
+        {"schema_version", "verdict", "certificate_sha256", "manifest_sha256", "events_through_seq"}
+    ),
+    EventType.CHALLENGE_REQUESTED: frozenset({"challenge_id"}),
+    # The generated test is untrusted model output: hashed and measured here.
+    EventType.CHALLENGE_PROPOSED: frozenset(
+        {
+            "challenge_id",
+            "requirement_id",
+            "challenge_type",
+            "test_sha256",
+            "test_bytes",
+            "test_count",
+            "provider",
+            "model_id",
+        }
+    ),
+    EventType.CHALLENGE_REJECTED: frozenset({"challenge_id", "reason", "test_sha256"}),
+    EventType.CHALLENGE_COMPLETED: frozenset(
+        {
+            "challenge_id",
+            "outcome",
+            "reason",
+            "exit_code",
+            "output_sha256",
+            "output_bytes",
+            "duration_ms",
+            "image_id",
+        }
+    ),
 }
 
 

@@ -6,16 +6,20 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
+from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import Settings, get_settings
 from ..db.deps import get_session
+from ..db.models import Certificate, Check
 from ..enums import ErrorCode, RunMode
 from ..errors import ApiError
 from ..evidence.events import event_to_wire, list_events
-from ..schemas import EventOut, RunCreate, RunOut, TemplateOut
+from ..schemas import ChallengeOut, CheckOut, EventOut, RunCreate, RunOut, TemplateOut
+from ..services import challenges as challenge_service
 from ..services import runs as run_service
-from ..services.fixtures import FIXTURES
+from ..services.fixtures import FIXTURES, get_fixture
 from ..services.runtime import live_runtime_available
 from ..services.state_machine import InvalidTransitionError
 from .system import SandboxStatusDep
@@ -118,3 +122,57 @@ def cancel_run(run_id: uuid.UUID, session: SessionDep) -> RunOut:
     except run_service.ConcurrentUpdateError:
         raise ApiError(409, ErrorCode.CONFLICT, "Run changed concurrently; retry") from None
     return RunOut.from_model(run)
+
+
+@router.get("/runs/{run_id}/checks", response_model=list[CheckOut], operation_id="listChecks")
+def list_checks(run_id: uuid.UUID, session: SessionDep) -> list[CheckOut]:
+    run = _run_or_404(session, run_id)
+    order = {r: i for i, r in enumerate(get_fixture(run.task_id).required_checks)}
+    checks = session.scalars(select(Check).where(Check.run_id == run.id))
+    return [
+        CheckOut.from_model(c)
+        for c in sorted(checks, key=lambda c: order.get(c.requirement_id, len(order)))
+    ]
+
+
+@router.get("/runs/{run_id}/certificate", operation_id="getCertificate")
+def get_certificate(run_id: uuid.UUID, session: SessionDep) -> JSONResponse:
+    run = _run_or_404(session, run_id)
+    certificate = session.scalar(select(Certificate).where(Certificate.run_id == run.id))
+    if certificate is None or certificate.body_json is None:
+        raise ApiError(404, ErrorCode.NOT_FOUND, "Certificate not ready")
+    return JSONResponse(
+        certificate.body_json, headers={"X-Certificate-SHA256": certificate.json_sha256}
+    )
+
+
+@router.post(
+    "/runs/{run_id}/challenge",
+    response_model=ChallengeOut,
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="startChallenge",
+)
+def start_challenge(run_id: uuid.UUID, session: SessionDep, settings: SettingsDep) -> ChallengeOut:
+    _run_or_404(session, run_id)
+    try:
+        challenge = challenge_service.request_challenge(
+            session, str(run_id), max_per_run=settings.max_challenges_per_run
+        )
+    except challenge_service.ChallengeNotAllowedError as exc:
+        raise ApiError(409, ErrorCode.CONFLICT, f"Cannot challenge yet: {exc.reason}") from None
+    except challenge_service.ChallengeLimitError:
+        raise ApiError(
+            429, ErrorCode.RATE_LIMITED, "Challenge limit reached for this run"
+        ) from None
+    return ChallengeOut.from_model(challenge, None)
+
+
+@router.get(
+    "/runs/{run_id}/challenges", response_model=list[ChallengeOut], operation_id="listChallenges"
+)
+def list_challenges(run_id: uuid.UUID, session: SessionDep) -> list[ChallengeOut]:
+    run = _run_or_404(session, run_id)
+    return [
+        ChallengeOut.from_model(c, challenge_service.challenge_test_source(session, c))
+        for c in challenge_service.list_challenges(session, run.id)
+    ]

@@ -29,7 +29,7 @@ paths:
         '200': {description: Run summaries, newest first, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Run'}}}}}
     post:
       operationId: createRun
-      description: Creates a run in `queued` state; the worker then advances it. `fixture` runs use the deterministic scripted agent in the configured sandbox. `live` runs use Nemotron and require a live model AND an enforcing OpenShell sandbox, otherwise 422. Until the independent verifier exists (Commit 09) a finished run concludes `inconclusive`.
+      description: Creates a run in `queued` state; the worker then advances it. `fixture` runs use the deterministic scripted agent in the configured sandbox. `live` runs use Nemotron and require a live model AND an enforcing OpenShell sandbox, otherwise 422. A finished run is concluded only by the independent verifier (`verified`/`failed`/`inconclusive`) from measured checks; the agent's claim never sets it.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -63,22 +63,35 @@ paths:
     parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
     get:
       operationId: listChecks
+      description: Independent check results in the template's required_checks order; empty until verification completes.
       responses:
-        '200': {description: Independent checks, content: {application/json: {schema: {type: array, items: {type: object}}}}}
+        '200': {description: Independent checks, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CheckResult'}}}}}
+        '404': {description: Run not found, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   /runs/{run_id}/challenge:
     parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
     post:
       operationId: startChallenge
+      description: Queues a proof challenge for a certified run. The worker asks the model (scripted in fixture mode, Nemotron in live mode) for one pytest test, validates it statically and runs it only in the independent verifier. Does not change the run's certificate.
       responses:
-        '202': {description: Challenge queued, content: {application/json: {schema: {type: object}}}}
-        '409': {description: Cannot challenge yet}
+        '202': {description: Challenge queued, content: {application/json: {schema: {$ref: '#/components/schemas/Challenge'}}}}
+        '404': {description: Run not found, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '409': {description: "Cannot challenge yet (not certified, no recorded workspace, or a challenge is in progress)", content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '429': {description: Challenge limit for this run reached, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+  /runs/{run_id}/challenges:
+    parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      operationId: listChallenges
+      responses:
+        '200': {description: Challenges for the run, oldest first, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Challenge'}}}}}
+        '404': {description: Run not found, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   /runs/{run_id}/certificate:
     parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
     get:
       operationId: getCertificate
+      description: "The stored certificate, byte-for-byte the object whose canonical-JSON SHA-256 is in header `X-Certificate-SHA256`. Verify offline with `python -m prooflayer_api.evidence.verify_cli`."
       responses:
         '200': {description: Evidence certificate, content: {application/json: {schema: {$ref: '#/components/schemas/Certificate'}}}}
-        '404': {description: Not ready}
+        '404': {description: Not ready (run not verified yet) or run not found, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   /runs/{run_id}/cancel:
     parameters: [{name: run_id, in: path, required: true, schema: {type: string, format: uuid}}]
     post:
@@ -100,7 +113,7 @@ components:
         live_model_enabled: {type: boolean}
         openshell_available: {type: boolean, description: "SANDBOX_DRIVER=openshell and the CLI + gateway respond"}
         sandbox_enforced: {type: boolean, description: "Runs execute under OpenShell; each sandbox's Landlock enforcement is re-confirmed at provisioning"}
-        independent_verifier_available: {type: boolean}
+        independent_verifier_available: {type: boolean, description: "VERIFIER_DRIVER=docker, the engine answers and the pinned verifier image is present"}
         tavily_enabled: {type: boolean}
     Template:
       type: object
@@ -113,7 +126,7 @@ components:
         read_denied_paths: {type: array, items: {type: string}}
         required_checks: {type: array, items: {type: string}, description: Check template IDs, never commands}
         policy_version: {type: string}
-        repo_sha: {type: string, description: "'unpinned' until fixture repositories exist"}
+        repo_sha: {type: string, description: "sha256 tree digest of the pinned fixture repository; the verifier refuses a baseline that differs"}
         expected_verdict: {type: string, enum: [VERIFIED, FAILED, INCONCLUSIVE], description: Benchmark ground truth, not a run result}
     ErrorResponse:
       type: object
@@ -152,19 +165,81 @@ components:
         run_id: {type: string, format: uuid}
         seq: {type: integer, minimum: 1}
         timestamp: {type: string, format: date-time}
-        event_type: {type: string, enum: [run.created, run.status_changed, sandbox.provisioned, sandbox.released, model.called, agent.action_proposed, tool.result, policy.denied, agent.claimed, agent.finished]}
-        actor: {type: string, enum: [api, orchestrator, seeder]}
+        event_type: {type: string, enum: [run.created, run.status_changed, sandbox.provisioned, sandbox.released, model.called, agent.action_proposed, tool.result, policy.denied, agent.claimed, agent.finished, workspace.snapshot, check.completed, certificate.issued, challenge.requested, challenge.proposed, challenge.rejected, challenge.completed]}
+        actor: {type: string, enum: [api, orchestrator, seeder, verifier]}
         safe_payload: {type: object, description: Allowlisted scalar fields only}
         previous_hash: {type: string, description: "64 zeros for seq 1"}
         event_hash: {type: string, description: "sha256 of canonical JSON of all other fields"}
+    CheckResult:
+      type: object
+      required: [requirement_id, kind, outcome, reason, command_template_id, exit_code, output_sha256, duration_ms, evidence_ref, measurements]
+      properties:
+        requirement_id: {type: string, description: Check template ID from the template's required_checks}
+        kind: {type: string, enum: [pytest, diff_allowlist, policy_attempts]}
+        outcome: {type: string, enum: [PASS, FAIL, INCONCLUSIVE]}
+        reason: {type: [string, 'null'], description: "Machine-readable, e.g. all_tests_passed, tests_failed, timeout, verifier_disabled, forbidden_access_attempted"}
+        command_template_id: {type: [string, 'null']}
+        exit_code: {type: [integer, 'null'], description: Real exit code from the verifier container; null when nothing ran}
+        output_sha256: {type: [string, 'null']}
+        duration_ms: {type: [integer, 'null']}
+        evidence_ref: {type: [string, 'null'], description: SHA-256 of the stored output artifact}
+        measurements: {type: object, description: Scalar counts and flags}
+    CertificateCheck:
+      allOf:
+        - $ref: '#/components/schemas/CheckResult'
+        - type: object
+          properties:
+            output_bytes: {type: [integer, 'null']}
+    CertificateClaim:
+      type: object
+      required: [claim_id, source, trusted, statement_sha256, statement_chars, asserts_tests_passed, requirement_id, status]
+      properties:
+        claim_id: {type: string}
+        source: {type: string, const: agent}
+        trusted: {type: boolean, const: false}
+        statement_sha256: {type: string}
+        statement_chars: {type: integer}
+        asserts_tests_passed: {type: [boolean, 'null']}
+        requirement_id: {type: string}
+        status: {type: string, enum: [SUPPORTED, CONTRADICTED, UNVERIFIED], description: Derived from the measured check; never from the claim}
     Certificate:
       type: object
-      required: [schema_version, run_id, verdict, claims, evidence_manifest_sha256]
+      required: [schema_version, run_id, template_id, verdict, claims, checks, limitations, evidence_manifest_sha256, manifest]
       properties:
         schema_version: {type: string, const: '0.1.0'}
         run_id: {type: string, format: uuid}
+        template_id: {type: string}
         verdict: {type: string, enum: [VERIFIED, FAILED, INCONCLUSIVE]}
-        claims: {type: array, items: {type: object}}
-        checks: {type: array, items: {type: object}}
-        evidence_manifest_sha256: {type: string}
+        claims: {type: array, items: {$ref: '#/components/schemas/CertificateClaim'}}
+        checks: {type: array, items: {$ref: '#/components/schemas/CertificateCheck'}}
+        evidence_manifest_sha256: {type: string, description: sha256 of the canonical JSON of `manifest`; also in the detached ledger}
+        manifest:
+          type: object
+          description: "Binds the certificate to its evidence: content_sha256 (verdict, claims, checks, limitations), events_through_seq + event_chain_head, agent and verifier runtime identities, artifact digests, pinned repo_sha and checks_version"
+          required: [schema_version, run_id, template_id, verdict, content_sha256, events_through_seq, event_chain_head, event_chain_valid, agent, verifier, artifacts, issued_at]
         limitations: {type: array, items: {type: string}}
+    Challenge:
+      type: object
+      required: [id, run_id, status, outcome, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        run_id: {type: string, format: uuid}
+        status: {type: string, enum: [queued, running, completed, rejected, error]}
+        requirement_id: {type: [string, 'null']}
+        challenge_type: {type: [string, 'null']}
+        validated: {type: [boolean, 'null'], description: false = rejected by static validation and never executed}
+        outcome: {type: [string, 'null'], enum: [PASS, FAIL, INCONCLUSIVE, null], description: Set only from the verifier's exit code}
+        reason: {type: [string, 'null']}
+        test_sha256: {type: [string, 'null']}
+        test_bytes: {type: [integer, 'null']}
+        test_count: {type: [integer, 'null']}
+        test_source: {type: [string, 'null'], description: Untrusted model-written test source, for review}
+        exit_code: {type: [integer, 'null']}
+        output_sha256: {type: [string, 'null']}
+        output_bytes: {type: [integer, 'null']}
+        duration_ms: {type: [integer, 'null']}
+        provider: {type: [string, 'null']}
+        model_id: {type: [string, 'null']}
+        verifier_image_id: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+        finished_at: {type: [string, 'null'], format: date-time}

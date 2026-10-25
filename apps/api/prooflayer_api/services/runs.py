@@ -118,7 +118,7 @@ def create_run(
             "policy_version": fixture.policy_version,
         },
     )
-    _apply_transition(session, run, RunStatus.QUEUED, reason="accepted", actor=actor)
+    apply_transition(session, run, RunStatus.QUEUED, reason="accepted", actor=actor)
     try:
         session.commit()
     except IntegrityError:
@@ -146,7 +146,7 @@ def list_runs(session: Session, limit: int = 50) -> list[Run]:
     return list(session.scalars(select(Run).order_by(Run.created_at.desc()).limit(limit)))
 
 
-def _apply_transition(
+def apply_transition(
     session: Session,
     run: Run,
     target: RunStatus,
@@ -199,7 +199,7 @@ def transition_run(
     """
     run = get_run(session, run_id)
     try:
-        _apply_transition(
+        apply_transition(
             session,
             run,
             target,

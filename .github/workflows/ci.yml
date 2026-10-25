@@ -47,3 +47,30 @@ jobs:
 
       - name: Handoff package check
         run: python scripts/check_docs.py
+
+  verifier:
+    name: Independent verifier (real containers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PROOFLAYER_MOCK_MODE: "true"
+      RUN_LIVE_INTEGRATION: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements*.txt
+
+      - name: Install pinned dependencies
+        run: pip install -r apps/api/requirements-dev.txt
+
+      - name: Build verifier image
+        run: docker build -f infra/verifier/verifier.Dockerfile -t prooflayer-verifier:0.1.0 infra/verifier
+
+      - name: Real-container verifier tests
+        run: RUN_DOCKER_VERIFIER=1 pytest -q -rs tests/test_docker_verifier.py

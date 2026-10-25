@@ -188,6 +188,18 @@ class OpenShellSession:
                 denials.append(denial)
         return denials
 
+    def snapshot(self, paths: Sequence[str]) -> dict[str, bytes | None]:
+        cap = self._spec.max_output_bytes
+        observed: dict[str, bytes | None] = {}
+        for path in paths:
+            result = self._exec(["head", "-c", str(cap + 1), "--", f"{REPO_DIR}/{path}"])
+            if result.returncode == 0 and len(result.stdout) <= cap:
+                observed[path] = result.stdout
+            elif result.returncode not in (0, None) and b"No such file" in result.stderr:
+                observed[path] = None
+            # Anything else (denied, timeout, oversized) stays unreported.
+        return observed
+
     def release(self) -> None:
         self._driver.delete(self._name)
 

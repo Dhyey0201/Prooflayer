@@ -52,6 +52,13 @@ class EventType(StrEnum):
     POLICY_DENIED = "policy.denied"
     AGENT_CLAIMED = "agent.claimed"
     AGENT_FINISHED = "agent.finished"
+    WORKSPACE_SNAPSHOT = "workspace.snapshot"
+    CHECK_COMPLETED = "check.completed"
+    CERTIFICATE_ISSUED = "certificate.issued"
+    CHALLENGE_REQUESTED = "challenge.requested"
+    CHALLENGE_PROPOSED = "challenge.proposed"
+    CHALLENGE_REJECTED = "challenge.rejected"
+    CHALLENGE_COMPLETED = "challenge.completed"
 
 
 class Actor(StrEnum):
@@ -60,6 +67,18 @@ class Actor(StrEnum):
     API = "api"
     ORCHESTRATOR = "orchestrator"
     SEEDER = "seeder"
+    # The independent verifier: writes check results and certificates only.
+    VERIFIER = "verifier"
+
+
+class ChallengeStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    # A validated test was executed; ``outcome`` holds its measured result.
+    COMPLETED = "completed"
+    # The proposal failed validation and was never executed.
+    REJECTED = "rejected"
+    ERROR = "error"
 
 
 class ErrorCode(StrEnum):

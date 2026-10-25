@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import uuid
+from pathlib import Path
 
 import pytest
 
@@ -63,6 +64,31 @@ def test_nebius_model_is_listed_and_answers_json(live_settings: Settings) -> Non
     )
     assert result.completion_tokens > 0
     assert "list_files" in result.content
+
+
+def test_nemotron_challenge_proposal_parses_and_validates(live_settings: Settings) -> None:
+    """One real proposal; it must satisfy the schema and the static validator."""
+    if not live_settings.nebius_configured:
+        pytest.skip("NEBIUS_API_KEY not set")
+    from prooflayer_api.ai.client import CircuitBreaker, ModelClient, RunBudget
+    from prooflayer_api.ai.nebius import NebiusTransport
+    from prooflayer_api.verifier.challenge import validate_test_source
+    from prooflayer_api.verifier.proposer import propose_challenge
+
+    fixture = get_fixture(TemplateId.FALSE_SUCCESS_AUTH)
+    client = ModelClient(
+        transport=NebiusTransport(live_settings),
+        budget=RunBudget(max_calls=2, max_tokens=8000),
+        breaker=CircuitBreaker(),
+        max_retries=1,
+    )
+    workspace = Path(__file__).parents[1] / "apps/api/prooflayer_api/fixture_workspaces"
+    source = (workspace / "false-success-auth/src/auth.py").read_text()
+    proposal = propose_challenge(
+        client, fixture, "Fixed token refresh. All tests passed.", {"src/auth.py": source}
+    )
+    assert proposal.requirement_id in fixture.required_checks
+    assert validate_test_source(proposal.test_source).test_count >= 1
 
 
 def test_openshell_denies_secret_read_and_out_of_allowlist_write(live_settings: Settings) -> None:

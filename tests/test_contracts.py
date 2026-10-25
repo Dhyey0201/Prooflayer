@@ -49,6 +49,10 @@ IMPLEMENTED = {
     ("/runs/{run_id}", "get"),
     ("/runs/{run_id}/events", "get"),
     ("/runs/{run_id}/cancel", "post"),
+    ("/runs/{run_id}/checks", "get"),
+    ("/runs/{run_id}/certificate", "get"),
+    ("/runs/{run_id}/challenge", "post"),
+    ("/runs/{run_id}/challenges", "get"),
 }
 
 
@@ -113,3 +117,32 @@ def test_error_codes_match_contract() -> None:
 
 def test_challenge_schema_loads() -> None:
     assert load_schemas()["additionalProperties"] is False
+
+
+def test_every_contract_route_is_implemented() -> None:
+    contract = load_openapi()["paths"]
+    declared = {
+        (path, method)
+        for path, methods in contract.items()
+        for method in methods
+        if method in ("get", "post")
+    }
+    assert declared == IMPLEMENTED
+
+
+def test_challenge_status_and_check_outcomes_match_contract() -> None:
+    from prooflayer_api.enums import ChallengeStatus, CheckOutcome
+
+    challenge = _schema("Challenge")["properties"]
+    assert [s.value for s in ChallengeStatus] == challenge["status"]["enum"]
+    assert [o.value for o in CheckOutcome] == _schema("CheckResult")["properties"]["outcome"][
+        "enum"
+    ]
+    assert [o.value for o in CheckOutcome] == [o for o in challenge["outcome"]["enum"] if o]
+
+
+def test_check_and_challenge_responses_match_contract(api: TestClient) -> None:
+    from prooflayer_api.schemas import ChallengeOut, CheckOut
+
+    assert set(CheckOut.model_fields) == set(_schema("CheckResult")["properties"])
+    assert set(ChallengeOut.model_fields) == set(_schema("Challenge")["properties"])

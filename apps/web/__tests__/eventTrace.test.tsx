@@ -77,4 +77,30 @@ describe("EventTrace", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
   });
+
+  it("labels verifier check results with their measured outcome and exit code", () => {
+    const check: Event = {
+      run_id: "11111111-1111-1111-1111-111111111111",
+      seq: 3,
+      timestamp: "2026-10-23T00:00:02Z",
+      event_type: "check.completed",
+      actor: "verifier",
+      safe_payload: {
+        requirement_id: "pytest-full-suite",
+        kind: "pytest",
+        outcome: "FAIL",
+        reason: "tests_failed",
+        exit_code: 1,
+        image_id: "sha256:" + "d".repeat(64),
+      },
+      previous_hash: "b".repeat(64),
+      event_hash: "e".repeat(64),
+    };
+    render(<EventTrace events={[...EVENTS, check]} />);
+    expect(screen.getByText("Independent check")).toBeInTheDocument();
+    expect(
+      screen.getByText("requirement_id=pytest-full-suite outcome=FAIL exit_code=1 reason=tests_failed"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
 });

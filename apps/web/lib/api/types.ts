@@ -89,9 +89,16 @@ export type EventType =
   | "tool.result"
   | "policy.denied"
   | "agent.claimed"
-  | "agent.finished";
+  | "agent.finished"
+  | "workspace.snapshot"
+  | "check.completed"
+  | "certificate.issued"
+  | "challenge.requested"
+  | "challenge.proposed"
+  | "challenge.rejected"
+  | "challenge.completed";
 
-export type EventActor = "api" | "orchestrator" | "seeder";
+export type EventActor = "api" | "orchestrator" | "seeder" | "verifier";
 
 export interface Event {
   run_id: string;
@@ -125,7 +132,7 @@ export interface ApiErrorEnvelope {
   error: ApiErrorBody;
 }
 
-/** Mirrors `enums.CheckOutcome`. Not yet produced by the backend (Commit 09). */
+/** Mirrors `enums.CheckOutcome`; produced by the independent verifier. */
 export type CheckOutcome = "PASS" | "FAIL" | "INCONCLUSIVE";
 
 /**

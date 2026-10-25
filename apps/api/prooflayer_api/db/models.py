@@ -10,10 +10,12 @@ from datetime import UTC, datetime
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     DateTime,
     Enum,
     ForeignKey,
     Integer,
+    LargeBinary,
     MetaData,
     String,
     Text,
@@ -21,7 +23,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from ..enums import CheckOutcome, RunMode, RunStatus, TemplateId, Verdict
+from ..enums import ChallengeStatus, CheckOutcome, RunMode, RunStatus, TemplateId, Verdict
 
 NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
@@ -119,6 +121,9 @@ class Artifact(Base):
     location: Mapped[str] = mapped_column(String(500))
     size_bytes: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    # Small evidence blobs (verifier output, agent workspace, challenge test)
+    # stored inline, content-addressed by ``content_sha256``; location is "db".
+    content: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 
 
 class Check(Base):
@@ -132,6 +137,10 @@ class Check(Base):
     evidence_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
     command_template_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    output_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    measurements_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class Certificate(Base):
@@ -144,3 +153,40 @@ class Certificate(Base):
     json_sha256: Mapped[str] = mapped_column(String(64))
     manifest_sha256: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    # The exact certificate served by the API; ``json_sha256`` is its canonical digest.
+    body_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class Challenge(Base):
+    """A model-proposed test, validated and run by the verifier after certification."""
+
+    __tablename__ = "challenges"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(36), ForeignKey("runs.id"), index=True)
+    status: Mapped[ChallengeStatus] = mapped_column(
+        _enum(ChallengeStatus, "challenge_status"), index=True
+    )
+    requirement_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    challenge_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Untrusted model-written test source, stored as an artifact (sha256 here).
+    test_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    test_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    test_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    validated: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    outcome: Mapped[CheckOutcome | None] = mapped_column(
+        _enum(CheckOutcome, "challenge_outcome"), nullable=True
+    )
+    reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    output_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    model_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    verifier_image_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, server_default="1")
+
+    __mapper_args__ = {"version_id_col": version}  # noqa: RUF012
