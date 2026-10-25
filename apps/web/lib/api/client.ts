@@ -2,6 +2,7 @@ import type {
   ApiErrorBody,
   ApiErrorEnvelope,
   CapabilitiesResponse,
+  Certificate,
   Event,
   HealthResponse,
   Run,
@@ -157,4 +158,14 @@ export function getRunEvents(
 
 export function cancelRun(runId: string, init?: RequestInit): Promise<Run> {
   return request<Run>(`/runs/${runId}/cancel`, { ...init, method: "POST" });
+}
+
+/**
+ * The independent verifier (Commit 09) doesn't exist yet, so this currently
+ * 404s for every run — the contract documents 404 as "Not ready", which is
+ * literally true whether the route is unimplemented or the run just isn't
+ * done. Callers should treat a 404 here as "no certificate yet", not an error.
+ */
+export function getCertificate(runId: string, init?: RequestInit): Promise<Certificate> {
+  return request<Certificate>(`/runs/${runId}/certificate`, init);
 }

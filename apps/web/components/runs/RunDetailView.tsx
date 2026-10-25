@@ -2,9 +2,13 @@
 
 import { ErrorPanel } from "@/components/ErrorPanel";
 import { RunStatusPill, VerdictPill } from "@/components/StatusPill";
+import { CertificateExplorer } from "@/components/runs/CertificateExplorer";
+import { ClaimInspector } from "@/components/runs/ClaimInspector";
 import { EventTrace } from "@/components/runs/EventTrace";
+import { Tabs } from "@/components/runs/Tabs";
 import { ACTIVE_RUN_STATUSES } from "@/lib/api/types";
 import { useRunDetail } from "@/lib/api/useRunDetail";
+import { useTemplates } from "@/lib/api/useTemplates";
 
 function formatTimestamp(value: string): string {
   return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" });
@@ -12,6 +16,7 @@ function formatTimestamp(value: string): string {
 
 export function RunDetailView({ runId }: { runId: string }) {
   const { cancel, cancelState, ...status } = useRunDetail(runId);
+  const templates = useTemplates();
 
   if (status.phase === "loading") {
     return (
@@ -27,6 +32,10 @@ export function RunDetailView({ runId }: { runId: string }) {
 
   const { run, events } = status;
   const isActive = ACTIVE_RUN_STATUSES.includes(run.status);
+  const template =
+    templates.phase === "ready"
+      ? templates.data.find((candidate) => candidate.id === run.template_id) ?? null
+      : null;
 
   return (
     <div className="space-y-6">
@@ -88,12 +97,25 @@ export function RunDetailView({ runId }: { runId: string }) {
         )}
       </header>
 
-      <section aria-labelledby="trace-heading" className="space-y-4">
-        <h2 id="trace-heading" className="text-lg font-semibold text-foreground">
-          Event trace
-        </h2>
-        <EventTrace events={events} />
-      </section>
+      <Tabs
+        tabs={[
+          {
+            id: "trace",
+            label: "Event trace",
+            content: <EventTrace events={events} />,
+          },
+          {
+            id: "claim",
+            label: "Claim inspector",
+            content: <ClaimInspector run={run} events={events} template={template} />,
+          },
+          {
+            id: "certificate",
+            label: "Certificate",
+            content: <CertificateExplorer runId={run.id} />,
+          },
+        ]}
+      />
     </div>
   );
 }
