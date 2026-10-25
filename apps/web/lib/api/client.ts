@@ -3,6 +3,7 @@ import type {
   ApiErrorEnvelope,
   CapabilitiesResponse,
   Certificate,
+  Challenge,
   Event,
   HealthResponse,
   Run,
@@ -160,12 +161,33 @@ export function cancelRun(runId: string, init?: RequestInit): Promise<Run> {
   return request<Run>(`/runs/${runId}/cancel`, { ...init, method: "POST" });
 }
 
+export interface CertificateFetch {
+  certificate: Certificate;
+  /** `X-Certificate-SHA256`: digest of the exact JSON bytes served, from `certificates.json_sha256`. */
+  certificateSha256: string | null;
+}
+
 /**
- * The independent verifier (Commit 09) doesn't exist yet, so this currently
- * 404s for every run — the contract documents 404 as "Not ready", which is
- * literally true whether the route is unimplemented or the run just isn't
- * done. Callers should treat a 404 here as "no certificate yet", not an error.
+ * 404 ("Not ready") until the independent verifier has graded the run.
+ * Callers should treat a 404 here as "no certificate yet", not an error.
  */
-export function getCertificate(runId: string, init?: RequestInit): Promise<Certificate> {
-  return request<Certificate>(`/runs/${runId}/certificate`, init);
+export async function getCertificate(
+  runId: string,
+  init?: RequestInit,
+): Promise<CertificateFetch> {
+  const { data, response } = await requestRaw<Certificate>(`/runs/${runId}/certificate`, init);
+  return { certificate: data, certificateSha256: response.headers.get("X-Certificate-SHA256") };
+}
+
+export function listChallenges(runId: string, init?: RequestInit): Promise<Challenge[]> {
+  return request<Challenge[]>(`/runs/${runId}/challenges`, init);
+}
+
+/**
+ * Queues a proof challenge for a certified run. 409 if the run isn't
+ * certified yet, has no recorded workspace, or already has one in progress;
+ * 429 over the per-run limit — both carry a human-readable `message`.
+ */
+export function requestChallenge(runId: string, init?: RequestInit): Promise<Challenge> {
+  return request<Challenge>(`/runs/${runId}/challenge`, { ...init, method: "POST" });
 }

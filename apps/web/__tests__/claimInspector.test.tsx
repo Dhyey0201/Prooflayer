@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { ClaimInspector } from "@/components/runs/ClaimInspector";
 import type { Event, Run, Template } from "@/lib/api/types";
-
-const RUN_ID = "11111111-1111-1111-1111-111111111111";
+import type { CertificateState } from "@/lib/api/useCertificate";
+import { buildCheck, buildClaim, readyCertificateState, RUN_ID } from "./testFixtures";
 
 const TEMPLATE: Template = {
   id: "denied-secret-read",
@@ -18,6 +18,8 @@ const TEMPLATE: Template = {
   expected_verdict: "FAILED",
 };
 
+const NOT_READY: CertificateState = { phase: "not_ready" };
+
 function baseRun(overrides: Partial<Run> = {}): Run {
   return {
     id: RUN_ID,
@@ -29,27 +31,6 @@ function baseRun(overrides: Partial<Run> = {}): Run {
     agent_claim: null,
     verdict: null,
     ...overrides,
-  };
-}
-
-function policyDeniedEvent(seq: number): Event {
-  return {
-    run_id: RUN_ID,
-    seq,
-    timestamp: "2026-10-21T00:00:00Z",
-    event_type: "policy.denied",
-    actor: "orchestrator",
-    safe_payload: {
-      step: seq,
-      action: "read_file",
-      target: ".env.production",
-      enforcement_point: "mock",
-      enforced: false,
-      source: "mock_policy",
-      rule: "read_denied_paths",
-    },
-    previous_hash: "0".repeat(64),
-    event_hash: `${seq}`.repeat(64).slice(0, 64),
   };
 }
 
@@ -72,54 +53,84 @@ function claimedEvent(seq: number, testsPassed: boolean): Event {
 
 describe("ClaimInspector", () => {
   it("never fabricates a claim when there is none (missing event safety)", () => {
-    render(<ClaimInspector run={baseRun()} events={[]} template={TEMPLATE} />);
+    render(
+      <ClaimInspector run={baseRun()} events={[]} template={TEMPLATE} certificate={NOT_READY} />,
+    );
     expect(screen.getByText("No agent claim yet.")).toBeInTheDocument();
   });
 
-  it("shows the agent's claim as explicitly untrusted, with its hash and length", () => {
+  it("shows the agent's claim as explicitly untrusted before verification completes", () => {
     const run = baseRun({ agent_claim: "All tests passed." });
     render(
-      <ClaimInspector run={run} events={[claimedEvent(1, true)]} template={TEMPLATE} />,
+      <ClaimInspector
+        run={run}
+        events={[claimedEvent(1, true)]}
+        template={TEMPLATE}
+        certificate={NOT_READY}
+      />,
     );
 
     expect(screen.getByText("Agent claim — untrusted")).toBeInTheDocument();
     expect(screen.getByText("All tests passed.")).toBeInTheDocument();
     expect(screen.getByText("passed")).toBeInTheDocument();
-    expect(screen.getByText("42 chars")).toBeInTheDocument();
   });
 
-  it("lists every required check as INCONCLUSIVE, never a fabricated PASS/FAIL", () => {
-    render(<ClaimInspector run={baseRun()} events={[]} template={TEMPLATE} />);
+  it("marks every required check PENDING while no certificate exists yet", () => {
+    render(
+      <ClaimInspector run={baseRun()} events={[]} template={TEMPLATE} certificate={NOT_READY} />,
+    );
 
-    const pills = screen.getAllByText(/INCONCLUSIVE/);
+    const pills = screen.getAllByText(/PENDING/);
     expect(pills.length).toBe(TEMPLATE.required_checks.length);
-    const panel = screen.getByText("Evidence status per required check").closest("div")!;
-    expect(within(panel).getByText("pytest-full-suite")).toBeInTheDocument();
-    expect(within(panel).getByText("no-forbidden-access-attempts")).toBeInTheDocument();
   });
 
-  it("surfaces the real count of observed forbidden-access attempts", () => {
+  it("renders the real measured outcome once a certificate exists, never a fabricated one", () => {
+    const certificate = readyCertificateState({
+      verdict: "FAILED",
+      claims: [buildClaim({ status: "CONTRADICTED", asserts_tests_passed: true })],
+      checks: [
+        buildCheck({ requirement_id: "pytest-full-suite", outcome: "PASS" }),
+        buildCheck({
+          requirement_id: "no-forbidden-access-attempts",
+          outcome: "FAIL",
+          reason: "forbidden_access_attempted",
+          measurements: { denied_attempts: 1 },
+        }),
+      ],
+    });
+
     render(
       <ClaimInspector
-        run={baseRun()}
-        events={[policyDeniedEvent(1), policyDeniedEvent(2)]}
+        run={baseRun({ status: "failed", verdict: "FAILED" })}
+        events={[]}
         template={TEMPLATE}
+        certificate={certificate}
       />,
     );
 
-    expect(screen.getByText(/2 forbidden attempts observed, all denied/)).toBeInTheDocument();
+    expect(screen.getByText("CONTRADICTED")).toBeInTheDocument();
+    expect(screen.getByText("The agent's claim is contradicted by what the verifier measured."))
+      .toBeInTheDocument();
+    const panel = screen.getByText("Evidence status per required check").closest("div")!;
+    expect(within(panel).getByText("PASS")).toBeInTheDocument();
+    expect(within(panel).getByText("FAIL")).toBeInTheDocument();
+    expect(within(panel).getByText("denied_attempts=1")).toBeInTheDocument();
+    expect(within(panel).queryByText(/PENDING/)).not.toBeInTheDocument();
   });
 
   it("degrades gracefully when the template could not be loaded", () => {
-    render(<ClaimInspector run={baseRun()} events={[]} template={null} />);
+    render(
+      <ClaimInspector run={baseRun()} events={[]} template={null} certificate={NOT_READY} />,
+    );
     expect(screen.getByText(/Requirements unavailable/)).toBeInTheDocument();
-    // No evidence-status panel without a template to source required_checks from.
-    expect(screen.queryByText(/not independently measured/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Evidence status per required check/)).not.toBeInTheDocument();
   });
 
-  it("colors INCONCLUSIVE but never relies on color alone for the label", () => {
-    render(<ClaimInspector run={baseRun()} events={[]} template={TEMPLATE} />);
-    const [pill] = screen.getAllByText(/INCONCLUSIVE/);
-    expect(within(pill.closest("span") ?? pill).getByText(/INCONCLUSIVE/)).toBeInTheDocument();
+  it("colors outcomes but never relies on color alone for the label", () => {
+    render(
+      <ClaimInspector run={baseRun()} events={[]} template={TEMPLATE} certificate={NOT_READY} />,
+    );
+    const [pill] = screen.getAllByText(/PENDING/);
+    expect(within(pill.closest("span") ?? pill).getByText(/PENDING/)).toBeInTheDocument();
   });
 });

@@ -135,18 +135,115 @@ export interface ApiErrorEnvelope {
 /** Mirrors `enums.CheckOutcome`; produced by the independent verifier. */
 export type CheckOutcome = "PASS" | "FAIL" | "INCONCLUSIVE";
 
-/**
- * The contract leaves `claims`/`checks` as open objects (no verifier exists
- * yet to pin their shape) — render them generically, never assume a field.
- */
-export type CertificateEntry = Record<string, unknown>;
+/** A claim's status is derived from the measured check, never from the claim itself. */
+export type ClaimStatus = "SUPPORTED" | "CONTRADICTED" | "UNVERIFIED";
+
+export interface CertificateCheck {
+  requirement_id: string;
+  kind: "pytest" | "diff_allowlist" | "policy_attempts";
+  outcome: CheckOutcome;
+  reason: string | null;
+  command_template_id: string | null;
+  exit_code: number | null;
+  output_sha256: string | null;
+  output_bytes: number | null;
+  duration_ms: number | null;
+  evidence_ref: string | null;
+  /** Small scalar counts/flags; shape varies by check kind — render generically. */
+  measurements: Record<string, string | number | boolean | null>;
+}
+
+export interface CertificateClaim {
+  claim_id: string;
+  source: "agent";
+  trusted: false;
+  statement_sha256: string;
+  statement_chars: number;
+  asserts_tests_passed: boolean | null;
+  requirement_id: string;
+  status: ClaimStatus;
+}
+
+export interface CertificateManifestAgent {
+  model_id: string | null;
+  outcome: string;
+  sandbox_driver: string | null;
+  sandbox_enforced: boolean;
+  policy_sha256: string | null;
+  worktree_digest: string | null;
+}
+
+export interface CertificateManifestVerifier {
+  driver: string;
+  isolation: string;
+  network: string;
+  image: string;
+  image_id: string;
+}
+
+export interface CertificateArtifact {
+  type: string;
+  sha256: string;
+  [key: string]: unknown;
+}
+
+export interface CertificateManifest {
+  schema_version: string;
+  run_id: string;
+  template_id: string;
+  policy_version: string;
+  repo_sha: string;
+  checks_version: string;
+  required_checks: string[];
+  verdict: Exclude<Verdict, null>;
+  content_sha256: string;
+  events_through_seq: number;
+  event_chain_head: string;
+  event_chain_valid: boolean;
+  agent: CertificateManifestAgent;
+  verifier: CertificateManifestVerifier | null;
+  artifacts: CertificateArtifact[];
+  issued_at: string;
+}
 
 export interface Certificate {
   schema_version: string;
   run_id: string;
+  template_id: string;
   verdict: Exclude<Verdict, null>;
-  claims: CertificateEntry[];
-  checks?: CertificateEntry[];
+  claims: CertificateClaim[];
+  checks: CertificateCheck[];
   evidence_manifest_sha256: string;
-  limitations?: string[];
+  manifest: CertificateManifest;
+  limitations: string[];
 }
+
+export type ChallengeStatus = "queued" | "running" | "completed" | "rejected" | "error";
+
+/** The model's proposed test. `test_source` is untrusted — render as code, never HTML. */
+export interface Challenge {
+  id: string;
+  run_id: string;
+  status: ChallengeStatus;
+  requirement_id: string | null;
+  challenge_type: string | null;
+  validated: boolean | null;
+  outcome: CheckOutcome | null;
+  reason: string | null;
+  test_sha256: string | null;
+  test_bytes: number | null;
+  test_count: number | null;
+  test_source: string | null;
+  exit_code: number | null;
+  output_sha256: string | null;
+  output_bytes: number | null;
+  duration_ms: number | null;
+  provider: string | null;
+  model_id: string | null;
+  verifier_image_id: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
+/** Statuses a challenge can still move through; mirrors `challenges.ACTIVE`. */
+export const ACTIVE_CHALLENGE_STATUSES: readonly ChallengeStatus[] = ["queued", "running"];

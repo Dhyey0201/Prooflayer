@@ -1,5 +1,10 @@
+import { CheckOutcomePill } from "@/components/StatusPill";
 import { PolicyPreview } from "@/components/dashboard/PolicyPreview";
+import { ClaimVsEvidence } from "@/components/runs/ClaimVsEvidence";
+import type { CertificateState } from "@/lib/api/useCertificate";
 import type { Event, Run, Template } from "@/lib/api/types";
+
+const CLAIM_REQUIREMENT = "pytest-full-suite";
 
 function lastEventOfType(events: Event[], type: Event["event_type"]): Event | null {
   for (let i = events.length - 1; i >= 0; i -= 1) {
@@ -8,19 +13,32 @@ function lastEventOfType(events: Event[], type: Event["event_type"]): Event | nu
   return null;
 }
 
-function countEventsOfType(events: Event[], type: Event["event_type"]): number {
-  return events.filter((event) => event.event_type === type).length;
-}
-
-function InconclusivePill({ label }: { label: string }) {
+function PendingPill() {
   return (
-    <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-300 ring-1 ring-inset ring-amber-500/30">
-      {label}
+    <span className="inline-flex items-center rounded-full bg-slate-500/15 px-2.5 py-1 text-xs font-semibold text-slate-300 ring-1 ring-inset ring-slate-500/30">
+      PENDING — verification not complete
     </span>
   );
 }
 
-function ClaimPanel({ run, events }: { run: Run; events: Event[] }) {
+function MeasurementChips({ measurements }: { measurements: Record<string, unknown> }) {
+  const entries = Object.entries(measurements);
+  if (entries.length === 0) return null;
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {entries.map(([key, value]) => (
+        <code
+          key={key}
+          className="rounded bg-background px-1.5 py-0.5 text-xs text-muted ring-1 ring-inset ring-border"
+        >
+          {key}={String(value)}
+        </code>
+      ))}
+    </div>
+  );
+}
+
+function ClaimFallbackPanel({ run, events }: { run: Run; events: Event[] }) {
   const claimed = lastEventOfType(events, "agent.claimed");
 
   if (!run.agent_claim && !claimed) {
@@ -35,7 +53,7 @@ function ClaimPanel({ run, events }: { run: Run; events: Event[] }) {
 
   return (
     <div className="rounded-xl border border-border bg-surface/60 p-4">
-      <p className="text-xs font-medium text-muted">Agent claim &mdash; untrusted</p>
+      <p className="text-xs font-medium text-muted">Agent claim — untrusted</p>
       <p className="mt-1 text-sm text-foreground">
         {run.agent_claim ?? <span className="text-muted">(claim text unavailable)</span>}
       </p>
@@ -65,46 +83,48 @@ function ClaimPanel({ run, events }: { run: Run; events: Event[] }) {
         </dl>
       )}
       <p className="mt-3 text-xs text-muted">
-        This is what the agent says happened &mdash; never evidence that it did.
+        Verification hasn&apos;t finished yet, so this can&apos;t be compared against a
+        measurement.
       </p>
     </div>
   );
 }
 
-function EvidenceStatusPanel({ template, events }: { template: Template; events: Event[] }) {
-  const deniedAttempts = countEventsOfType(events, "policy.denied");
-  const sandbox = lastEventOfType(events, "sandbox.provisioned");
-  const enforced = sandbox ? Boolean(sandbox.safe_payload.enforced) : null;
+function EvidenceStatusPanel({
+  template,
+  certificate,
+}: {
+  template: Template;
+  certificate: CertificateState;
+}) {
+  const checks = certificate.phase === "ready" ? certificate.data.checks : [];
 
   return (
     <div className="rounded-xl border border-border bg-surface/60 p-4">
       <p className="text-xs font-medium text-muted">Evidence status per required check</p>
       <ul className="mt-2 space-y-2">
-        {template.required_checks.map((check) => (
-          <li
-            key={check}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
-          >
-            <code className="text-xs text-foreground">{check}</code>
-            <div className="flex items-center gap-2">
-              {check === "no-forbidden-access-attempts" && (
-                <span className="text-xs text-muted">
-                  {deniedAttempts} forbidden attempt{deniedAttempts === 1 ? "" : "s"} observed, all
-                  denied
-                </span>
-              )}
-              <InconclusivePill label="INCONCLUSIVE — not independently measured" />
-            </div>
-          </li>
-        ))}
+        {template.required_checks.map((requirementId) => {
+          const check = checks.find((c) => c.requirement_id === requirementId) ?? null;
+          return (
+            <li
+              key={requirementId}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
+            >
+              <div>
+                <code className="text-xs text-foreground">{requirementId}</code>
+                {check && <MeasurementChips measurements={check.measurements} />}
+              </div>
+              <div className="flex items-center gap-2">
+                {check?.reason && <span className="text-xs text-muted">{check.reason}</span>}
+                {check ? <CheckOutcomePill outcome={check.outcome} /> : <PendingPill />}
+              </div>
+            </li>
+          );
+        })}
       </ul>
       <p className="mt-3 text-xs text-muted">
-        No check here is promoted to PASS or FAIL until the independent verifier exists (Commit
-        09). Sandbox enforcement:{" "}
-        <span className="font-mono text-foreground">
-          {enforced === null ? "unknown" : enforced ? "enforced" : "not enforced (mock mode)"}
-        </span>
-        .
+        Outcomes come only from the independent verifier&apos;s measurements — never from the
+        agent&apos;s own account.
       </p>
     </div>
   );
@@ -114,11 +134,24 @@ export function ClaimInspector({
   run,
   events,
   template,
+  certificate,
 }: {
   run: Run;
   events: Event[];
   template: Template | null;
+  certificate: CertificateState;
 }) {
+  const claim =
+    certificate.phase === "ready"
+      ? certificate.data.claims.find((c) => c.requirement_id === CLAIM_REQUIREMENT) ??
+        certificate.data.claims[0] ??
+        null
+      : null;
+  const matchingCheck =
+    certificate.phase === "ready" && claim
+      ? certificate.data.checks.find((c) => c.requirement_id === claim.requirement_id) ?? null
+      : null;
+
   return (
     <div className="space-y-4">
       {template ? (
@@ -130,11 +163,17 @@ export function ClaimInspector({
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted">
-          Requirements unavailable &mdash; could not load this run&apos;s template.
+          Requirements unavailable — could not load this run&apos;s template.
         </div>
       )}
-      <ClaimPanel run={run} events={events} />
-      {template && <EvidenceStatusPanel template={template} events={events} />}
+
+      {certificate.phase === "ready" ? (
+        <ClaimVsEvidence claim={claim} check={matchingCheck} />
+      ) : (
+        <ClaimFallbackPanel run={run} events={events} />
+      )}
+
+      {template && <EvidenceStatusPanel template={template} certificate={certificate} />}
     </div>
   );
 }
