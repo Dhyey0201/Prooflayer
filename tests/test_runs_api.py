@@ -30,8 +30,8 @@ def test_templates_list_trusted_registry(api: TestClient) -> None:
         assert template["allowed_paths"]
         assert template["required_checks"]
         assert ".env.production" in template["read_denied_paths"]
-        # Fixture repos are built in Commit 09; nothing is pinned yet.
-        assert template["repo_sha"] == "unpinned"
+        # Pinned by tree digest; the verifier refuses a baseline that differs.
+        assert len(template["repo_sha"]) == 64
 
 
 def test_template_expected_verdicts_match_benchmark_manifest(api: TestClient) -> None:

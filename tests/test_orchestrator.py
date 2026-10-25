@@ -21,16 +21,26 @@ from prooflayer_api.sandbox.base import (
 )
 from prooflayer_api.sandbox.mock import MockSandboxDriver, MockSandboxSession
 from prooflayer_api.services import runs as run_service
-from prooflayer_api.services.orchestrator import VERIFIER_UNAVAILABLE, RunOrchestrator
+from prooflayer_api.services.orchestrator import RunOrchestrator
 from prooflayer_api.services.runtime import Runtime, default_transport_factory
 from prooflayer_api.services.worker import RunWorker, recover_interrupted_runs
+from prooflayer_api.verifier.base import UnavailableVerifier
+
+# Without a verifier runtime: pytest checks are INCONCLUSIVE; measured
+# policy attempts still FAIL the denied-secret-read run.
+NO_VERIFIER_STATUS = {
+    TemplateId.SUCCESS_VALIDATION: RunStatus.INCONCLUSIVE,
+    TemplateId.FALSE_SUCCESS_AUTH: RunStatus.INCONCLUSIVE,
+    TemplateId.DENIED_SECRET_READ: RunStatus.FAILED,
+}
 
 
-def make_runtime(settings: Settings, driver=None, transport_factory=None) -> Runtime:
+def make_runtime(settings: Settings, driver=None, transport_factory=None, verifier=None) -> Runtime:
     return Runtime(
         settings=settings,
         driver=driver or MockSandboxDriver(),
         transport_factory=transport_factory or default_transport_factory(settings),
+        verifier=verifier or UnavailableVerifier(),
         breaker=CircuitBreaker(),
         sleep=lambda _s: None,
     )
@@ -67,15 +77,15 @@ def settings(make_settings) -> Settings:
 
 
 @pytest.mark.parametrize("template", list(TemplateId))
-def test_fixture_run_completes_with_valid_chain_and_inconclusive_verdict(
+def test_fixture_run_without_verifier_runtime_is_never_verified(
     session_factory, settings, template
 ) -> None:
     run_id = create(session_factory, template)
     final = RunOrchestrator(session_factory, make_runtime(settings)).process(run_id)
 
-    assert final is RunStatus.INCONCLUSIVE
+    assert final is NO_VERIFIER_STATUS[template]
     run = run_row(session_factory, run_id)
-    assert run.verdict == Verdict.INCONCLUSIVE
+    assert run.verdict == Verdict(final.value.upper())
     assert run.model_id == SCRIPTED_MODEL_ID
     assert run.agent_claim  # stored as an untrusted claim
     assert run.finished_at is not None
@@ -87,9 +97,10 @@ def test_fixture_run_completes_with_valid_chain_and_inconclusive_verdict(
         "provisioning",
         "running",
         "verifying",
-        "inconclusive",
+        final.value,
     ]
-    assert evts[-1]["safe_payload"]["reason"] == VERIFIER_UNAVAILABLE
+    assert evts[-1]["safe_payload"]["reason"] == "independent_verification"
+    assert evts[-1]["actor"] == Actor.VERIFIER.value
     types = [e["event_type"] for e in evts]
     assert types.index("sandbox.provisioned") < types.index("agent.action_proposed")
     assert types.index("sandbox.released") < types.index("agent.finished")
@@ -101,7 +112,16 @@ def test_fixture_run_completes_with_valid_chain_and_inconclusive_verdict(
     provisioned = next(e for e in evts if e["event_type"] == "sandbox.provisioned")
     assert provisioned["safe_payload"]["enforced"] is False
     assert provisioned["safe_payload"]["driver"] == "mock"
-    assert {e["actor"] for e in evts[2:]} == {Actor.ORCHESTRATOR.value}
+    assert {e["actor"] for e in evts[2:]} == {Actor.ORCHESTRATOR.value, Actor.VERIFIER.value}
+    pytest_check = next(
+        e["safe_payload"]
+        for e in evts
+        if e["event_type"] == "check.completed"
+        and e["safe_payload"]["requirement_id"] == "pytest-full-suite"
+    )
+    assert pytest_check["outcome"] == "INCONCLUSIVE"
+    assert pytest_check["reason"] == "verifier_disabled"
+    assert pytest_check["exit_code"] is None
     # Every agent check in mock mode is labelled simulated.
     checks = [
         e
@@ -261,6 +281,7 @@ def test_live_run_with_enforced_sandbox_uses_live_model(session_factory, setting
     )
     assert RunOrchestrator(session_factory, runtime).process(run_id) is RunStatus.INCONCLUSIVE
     evts = events(session_factory, run_id)
+    assert "certificate.issued" in [e["event_type"] for e in evts]
     assert (
         next(e for e in evts if e["event_type"] == "sandbox.provisioned")["safe_payload"][
             "enforced"
@@ -344,7 +365,7 @@ def test_worker_processes_oldest_queued_run_first(session_factory, settings) -> 
     assert worker.run_once() == first
     assert worker.run_once() == second
     assert worker.run_once() is None
-    assert run_row(session_factory, second).status == RunStatus.INCONCLUSIVE
+    assert run_row(session_factory, second).status == RunStatus.INCONCLUSIVE  # no verifier
 
 
 def test_concurrent_workers_never_execute_a_run_twice(session_factory, make_settings) -> None:
@@ -371,7 +392,8 @@ def test_concurrent_workers_never_execute_a_run_twice(session_factory, make_sett
         evts = events(session_factory, run_id)
         assert verify_chain(evts).valid
         assert statuses(evts).count("provisioning") == 1
-        assert run_row(session_factory, run_id).status == RunStatus.INCONCLUSIVE
+        template = TemplateId(run_row(session_factory, run_id).task_id)
+        assert run_row(session_factory, run_id).status == NO_VERIFIER_STATUS[template]
 
 
 def test_startup_recovery_marks_interrupted_runs_error(session_factory) -> None:
@@ -414,11 +436,10 @@ def test_background_worker_started_by_app_executes_api_runs(make_settings, migra
     )
     with TestClient(app) as api:
         run_id = api.post("/api/v1/runs", json={"template_id": "denied-secret-read"}).json()["id"]
-        assert _wait_for(
-            lambda: api.get(f"/api/v1/runs/{run_id}").json()["status"] == "inconclusive"
-        )
+        assert _wait_for(lambda: api.get(f"/api/v1/runs/{run_id}").json()["status"] == "failed")
         run = api.get(f"/api/v1/runs/{run_id}").json()
-        assert run["verdict"] == "INCONCLUSIVE"
+        # The measured forbidden-access attempt fails it, even without a verifier runtime.
+        assert run["verdict"] == "FAILED"
         assert run["agent_claim"]
         evts = api.get(f"/api/v1/runs/{run_id}/events").json()
         assert verify_chain(evts).valid

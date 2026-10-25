@@ -16,7 +16,7 @@ from .errors import UnhandledErrorMiddleware, register_error_handlers
 from .request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 from .routes import runs, system
 from .services.fixtures import seed_templates
-from .services.runtime import Runtime, SandboxStatusCache, build_runtime
+from .services.runtime import Runtime, SandboxStatusCache, VerifierStatusCache, build_runtime
 from .services.worker import RunWorker
 
 API_PREFIX = "/api/v1"
@@ -43,6 +43,7 @@ def _lifespan(settings: Settings, runtime: Runtime | None):
         run_runtime = runtime or build_runtime(settings)
         app.state.runtime = run_runtime
         app.state.sandbox_status = SandboxStatusCache(run_runtime.driver)
+        app.state.verifier_status = VerifierStatusCache(run_runtime.verifier)
         worker = RunWorker(session_factory, run_runtime) if settings.worker_enabled else None
         app.state.worker = worker
         if worker is not None:

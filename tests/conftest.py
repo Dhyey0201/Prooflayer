@@ -29,6 +29,13 @@ _SETTINGS_ENV = (
     "OPENSHELL_BIN",
     "PROOFLAYER_SANDBOX_IMAGE",
     "RUN_LIVE_INTEGRATION",
+    "VERIFIER_DRIVER",
+    "DOCKER_BIN",
+    "VERIFIER_IMAGE",
+    "VERIFIER_IMAGE_ID",
+    "PROOFLAYER_EVIDENCE_LEDGER",
+    "PROOFLAYER_MAX_CHALLENGES_PER_RUN",
+    "RUN_DOCKER_VERIFIER",
 )
 
 # Obviously fake; used to prove key values never leave the server.
@@ -48,6 +55,9 @@ def make_settings() -> Callable[..., Settings]:
         # _env_file=None: never read a local .env during tests. The background
         # worker is off unless a test turns it on, so runs stay where tests put them.
         values.setdefault("PROOFLAYER_WORKER_ENABLED", False)
+        # No real verifier or ledger file unless a test asks for one.
+        values.setdefault("VERIFIER_DRIVER", "disabled")
+        values.setdefault("PROOFLAYER_EVIDENCE_LEDGER", "")
         return Settings(_env_file=None, **values)
 
     return _make

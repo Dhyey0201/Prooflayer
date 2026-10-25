@@ -8,7 +8,12 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict
 
 from ..config import Settings, get_settings
-from ..services.runtime import SandboxStatusCache, build_sandbox_driver
+from ..services.runtime import (
+    SandboxStatusCache,
+    VerifierStatusCache,
+    build_sandbox_driver,
+    build_verifier_driver,
+)
 
 router = APIRouter(tags=["system"])
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -30,7 +35,7 @@ class CapabilitiesResponse(BaseModel):
     # Each sandbox's enforcement is confirmed again when it is provisioned.
     openshell_available: bool
     sandbox_enforced: bool
-    # The independent verifier lands in Commit 09; until then this stays False.
+    # The verifier runtime answers and its pinned image is present.
     independent_verifier_available: bool
     tavily_enabled: bool
 
@@ -47,8 +52,21 @@ def get_sandbox_status(request: Request, settings: SettingsDep) -> SandboxStatus
 SandboxStatusDep = Annotated[SandboxStatusCache, Depends(get_sandbox_status)]
 
 
+def get_verifier_status(request: Request, settings: SettingsDep) -> VerifierStatusCache:
+    status = getattr(request.app.state, "verifier_status", None)
+    if status is None:
+        status = VerifierStatusCache(build_verifier_driver(settings))
+        request.app.state.verifier_status = status
+    return status
+
+
+VerifierStatusDep = Annotated[VerifierStatusCache, Depends(get_verifier_status)]
+
+
 def build_capabilities(
-    settings: Settings, sandbox: SandboxStatusCache | None = None
+    settings: Settings,
+    sandbox: SandboxStatusCache | None = None,
+    verifier: VerifierStatusCache | None = None,
 ) -> CapabilitiesResponse:
     enforced = sandbox.enforced if sandbox is not None else False
     return CapabilitiesResponse(
@@ -57,7 +75,7 @@ def build_capabilities(
         live_model_enabled=settings.nebius_configured and not settings.mock_mode,
         openshell_available=enforced,
         sandbox_enforced=enforced,
-        independent_verifier_available=False,
+        independent_verifier_available=verifier.get().available if verifier else False,
         tavily_enabled=settings.tavily_configured,
     )
 
@@ -68,5 +86,7 @@ def get_health() -> HealthResponse:
 
 
 @router.get("/capabilities", response_model=CapabilitiesResponse, operation_id="getCapabilities")
-def get_capabilities(settings: SettingsDep, sandbox: SandboxStatusDep) -> CapabilitiesResponse:
-    return build_capabilities(settings, sandbox)
+def get_capabilities(
+    settings: SettingsDep, sandbox: SandboxStatusDep, verifier: VerifierStatusDep
+) -> CapabilitiesResponse:
+    return build_capabilities(settings, sandbox, verifier)

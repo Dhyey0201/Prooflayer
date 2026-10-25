@@ -1,8 +1,9 @@
-"""In-process worker that executes queued runs.
+"""In-process worker that executes queued runs, then queued proof challenges.
 
-``PROOFLAYER_MAX_CONCURRENT_RUNS`` threads poll for the oldest queued run. A
-run is claimed by its ``queued -> provisioning`` transition, which the
-optimistic lock makes exclusive, so two threads never execute the same run.
+``PROOFLAYER_MAX_CONCURRENT_RUNS`` threads poll for the oldest queued run (or,
+when none is queued, the oldest queued challenge). A run is claimed by its
+``queued -> provisioning`` transition and a challenge by ``queued -> running``,
+both under the optimistic lock, so two threads never execute the same item.
 Single-process deployment is assumed: on startup, runs a previous process left
 mid-flight are marked ``error`` (``worker_restarted``) instead of resumed.
 """
@@ -16,6 +17,11 @@ from sqlalchemy.orm import sessionmaker
 
 from ..enums import Actor, RunStatus
 from . import runs as run_service
+from .challenges import (
+    ChallengeProcessor,
+    next_queued_challenge_id,
+    recover_interrupted_challenges,
+)
 from .orchestrator import RunOrchestrator
 from .runtime import Runtime
 from .state_machine import InvalidTransitionError
@@ -48,6 +54,7 @@ class RunWorker:
     def __init__(self, session_factory: sessionmaker, runtime: Runtime) -> None:
         self._factory = session_factory
         self._orchestrator = RunOrchestrator(session_factory, runtime)
+        self._challenges = ChallengeProcessor(session_factory, runtime)
         self._poll = runtime.settings.worker_poll_seconds
         self._concurrency = runtime.settings.max_concurrent_runs
         self._stop = threading.Event()
@@ -55,6 +62,7 @@ class RunWorker:
 
     def start(self) -> None:
         recover_interrupted_runs(self._factory)
+        recover_interrupted_challenges(self._factory)
         for index in range(self._concurrency):
             thread = threading.Thread(
                 target=self._loop, name=f"prooflayer-worker-{index}", daemon=True
@@ -68,12 +76,17 @@ class RunWorker:
             thread.join(timeout)
 
     def run_once(self) -> str | None:
-        """Process the oldest queued run, if any. Returns its id."""
+        """Process the oldest queued run, else the oldest queued challenge. Returns its id."""
         with self._factory() as session:
             run_id = run_service.next_queued_run_id(session)
         if run_id is not None:
             self._orchestrator.process(run_id)
-        return run_id
+            return run_id
+        with self._factory() as session:
+            challenge_id = next_queued_challenge_id(session)
+        if challenge_id is not None:
+            self._challenges.process(challenge_id)
+        return challenge_id
 
     def _loop(self) -> None:
         while not self._stop.is_set():

@@ -22,6 +22,13 @@ class SandboxDriverName(StrEnum):
     OPENSHELL = "openshell"
 
 
+class VerifierDriverName(StrEnum):
+    # Fresh network-less container per check on the local Docker engine.
+    DOCKER = "docker"
+    # No verifier runtime: every executed check is INCONCLUSIVE.
+    DISABLED = "disabled"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -60,6 +67,30 @@ class Settings(BaseSettings):
     )
     sandbox_cpu: str = Field(default="1", pattern=r"^[0-9]+(\.[0-9]+)?m?$", alias="SANDBOX_CPU")
     sandbox_memory: str = Field(default="1Gi", pattern=r"^[0-9]+(Mi|Gi)$", alias="SANDBOX_MEMORY")
+
+    # Independent verifier (separate image, identity and container per check).
+    verifier_driver: VerifierDriverName = Field(
+        default=VerifierDriverName.DOCKER, alias="VERIFIER_DRIVER"
+    )
+    docker_bin: str = Field(default="docker", alias="DOCKER_BIN")
+    verifier_image: str = Field(default="prooflayer-verifier:0.1.0", alias="VERIFIER_IMAGE")
+    # Optional pin: refuse to verify unless the image ID matches exactly.
+    verifier_image_id: str | None = Field(
+        default=None, pattern=r"^sha256:[0-9a-f]{64}$", alias="VERIFIER_IMAGE_ID"
+    )
+    verifier_cpus: str = Field(default="1", pattern=r"^[0-9]+(\.[0-9]+)?$", alias="VERIFIER_CPUS")
+    verifier_memory: str = Field(default="512m", pattern=r"^[0-9]+[mg]$", alias="VERIFIER_MEMORY")
+    verifier_pids_limit: int = Field(default=128, ge=16, le=1024, alias="VERIFIER_PIDS_LIMIT")
+    verifier_timeout_seconds: int = Field(
+        default=60, ge=5, le=600, alias="VERIFIER_TIMEOUT_SECONDS"
+    )
+    # Detached append-only ledger of certificate digests; empty disables it.
+    evidence_ledger_path: str = Field(
+        default="./data/evidence-ledger.jsonl", alias="PROOFLAYER_EVIDENCE_LEDGER"
+    )
+    max_challenges_per_run: int = Field(
+        default=3, ge=0, le=20, alias="PROOFLAYER_MAX_CHALLENGES_PER_RUN"
+    )
 
     # Background worker that advances queued runs; tests turn it off.
     worker_enabled: bool = Field(default=True, alias="PROOFLAYER_WORKER_ENABLED")

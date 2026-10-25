@@ -1,11 +1,11 @@
-"""Executes one run: provision sandbox -> bounded agent -> release -> conclude.
+"""Executes one run: provision sandbox -> bounded agent -> snapshot -> release -> verify.
 
-The orchestrator is the only writer of run evidence. Each event is committed in
-its own transaction as it happens, so a crash still leaves an ordered, valid
-chain. The independent verifier arrives in Commit 09; until then a run whose
-agent finished concludes ``inconclusive`` with reason
-``independent_verifier_unavailable``. The agent's own claim and checks are never
-promoted to a verdict.
+The orchestrator writes the agent-side evidence and the independent verifier
+(``services.verification``) writes check results and the certificate; the agent
+writes nothing. Each event is committed in its own transaction as it happens,
+so a crash still leaves an ordered, valid chain. The agent's own claim and
+checks are never promoted to a verdict: the verdict comes from the verifier's
+measurements only, and is INCONCLUSIVE whenever they are missing.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from ..evidence.events import append_event
 from ..sandbox.base import (
     Denial,
     EnforcementUnverifiedError,
+    ProvisionInfo,
     SandboxSession,
     SandboxSpec,
     SandboxUnavailableError,
@@ -32,10 +33,10 @@ from . import runs as run_service
 from .fixtures import get_fixture
 from .runtime import Runtime
 from .state_machine import InvalidTransitionError
+from .verification import AgentRunState, RunVerifier
+from .workspace_paths import snapshot_paths
 
 log = logging.getLogger(__name__)
-
-VERIFIER_UNAVAILABLE = "independent_verifier_unavailable"
 
 
 class _Evidence:
@@ -195,6 +196,7 @@ class RunOrchestrator:
             if result is None:
                 release_reason = "model_unavailable"
                 return
+            observed = self._snapshot(run_id, sandbox, fixture)
         except BaseException:
             release_reason = "orchestrator_error"
             raise
@@ -216,7 +218,18 @@ class RunOrchestrator:
                 "detail": (result.detail or "-")[:200],
             },
         )
-        self._conclude(run_id, result)
+        self._conclude(run_id, result, client, sandbox.info, observed)
+
+    def _snapshot(self, run_id: str, sandbox: SandboxSession, fixture) -> dict | None:
+        """The agent's final workspace, read before the sandbox is released."""
+        if self._status(run_id) is RunStatus.CANCELED:
+            return None
+        try:
+            return sandbox.snapshot(snapshot_paths(fixture))
+        except Exception:
+            # Missing evidence makes the affected checks INCONCLUSIVE; never fatal.
+            log.exception("workspace snapshot failed for run %s", run_id)
+            return None
 
     def _run_agent(
         self, run_id: str, mode: RunMode, sandbox: SandboxSession, evidence: _Evidence
@@ -248,7 +261,14 @@ class RunOrchestrator:
         )
         return agent.run(), client
 
-    def _conclude(self, run_id: str, result: AgentResult) -> None:
+    def _conclude(
+        self,
+        run_id: str,
+        result: AgentResult,
+        client: Any,
+        info: ProvisionInfo,
+        observed: dict | None,
+    ) -> None:
         if result.outcome is AgentOutcome.CANCELED or self._status(run_id) is not RunStatus.RUNNING:
             return
         if result.claim is not None:
@@ -261,5 +281,18 @@ class RunOrchestrator:
                 )
         if not self._transition(run_id, RunStatus.VERIFYING, f"agent_{result.outcome.value}"):
             return
-        # No independent verifier yet: missing evidence is INCONCLUSIVE, never VERIFIED.
-        self._transition(run_id, RunStatus.INCONCLUSIVE, VERIFIER_UNAVAILABLE)
+        fixture = get_fixture(self._read(run_id, lambda r: TemplateId(r.task_id)))
+        RunVerifier(self._factory, self._runtime).verify(
+            run_id,
+            fixture,
+            AgentRunState(
+                agent_outcome=result.outcome.value,
+                claim_text=result.claim.summary if result.claim else None,
+                claim_tests_passed=result.claim.tests_passed if result.claim else None,
+                model_id=client.model_id,
+                sandbox_driver=info.driver,
+                sandbox_enforced=info.enforced,
+                policy_sha256=info.policy_sha256,
+                observed=observed,
+            ),
+        )

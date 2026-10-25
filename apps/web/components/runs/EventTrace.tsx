@@ -15,10 +15,28 @@ const EVENT_LABELS: Record<Event["event_type"], string> = {
   "policy.denied": "Policy denied",
   "agent.claimed": "Agent claim (untrusted)",
   "agent.finished": "Agent finished",
+  "workspace.snapshot": "Workspace snapshot",
+  "check.completed": "Independent check",
+  "certificate.issued": "Certificate issued",
+  "challenge.requested": "Challenge requested",
+  "challenge.proposed": "Challenge proposed (untrusted test)",
+  "challenge.rejected": "Challenge rejected",
+  "challenge.completed": "Challenge executed",
 };
 
 // Fields shown inline for the newer event types, in this order when present.
-const SUMMARY_FIELDS = ["action", "target", "outcome", "driver", "enforced", "source", "reason"];
+const SUMMARY_FIELDS = [
+  "requirement_id",
+  "action",
+  "target",
+  "outcome",
+  "verdict",
+  "exit_code",
+  "driver",
+  "enforced",
+  "source",
+  "reason",
+];
 
 function formatTime(value: string): string {
   return new Date(value).toLocaleTimeString(undefined, { hour12: false });

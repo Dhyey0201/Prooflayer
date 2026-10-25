@@ -8,6 +8,8 @@ enforces nothing: every provision reports ``enforced=False``, every denial
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from ..agent.actions import AGENT_CHECKS
 from .base import (
     Denial,
@@ -85,6 +87,9 @@ class MockSandboxSession:
 
     def drain_denials(self) -> list[Denial]:
         return []
+
+    def snapshot(self, paths: Sequence[str]) -> dict[str, bytes | None]:
+        return {p: self._files[p].encode() if p in self._files else None for p in paths}
 
     def file_content(self, path: str) -> str | None:
         """Test helper: the workspace state after the agent ran."""

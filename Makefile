@@ -2,7 +2,8 @@ PYTHON ?= python3.12
 VENV ?= .venv
 BIN := $(VENV)/bin
 
-.PHONY: install lint format test check-docs migrate seed run ci clean sandbox-image policy live-smoke
+.PHONY: install lint format test check-docs migrate seed run ci clean sandbox-image policy live-smoke \
+	verifier-image verifier-test verify-certificate
 
 install: ## Create venv and install pinned dev dependencies
 	$(PYTHON) -m venv $(VENV)
@@ -46,6 +47,18 @@ sandbox-image: ## Build the OpenShell agent workspace image for each fixture (ne
 
 policy: ## Print the generated OpenShell policy for FIXTURE (default denied-secret-read)
 	cd apps/api && ../../$(BIN)/python -m prooflayer_api.sandbox.policy $(or $(FIXTURE),denied-secret-read)
+
+VERIFIER_IMAGE ?= prooflayer-verifier:0.1.0
+
+verifier-image: ## Build the independent verifier image (needs Docker)
+	docker build -f infra/verifier/verifier.Dockerfile -t $(VERIFIER_IMAGE) infra/verifier
+
+verifier-test: ## Real-container verifier tests (needs Docker + verifier-image)
+	RUN_DOCKER_VERIFIER=1 $(BIN)/pytest -q -rs tests/test_docker_verifier.py
+
+verify-certificate: ## Check RUN=<id>'s certificate against the API and the detached ledger
+	cd apps/api && ../../$(BIN)/python -m prooflayer_api.evidence.verify_cli \
+		--api http://127.0.0.1:8000/api/v1 --run $(RUN) --ledger data/evidence-ledger.jsonl
 
 live-smoke: ## Opt-in live Nebius + OpenShell checks (uses credits; never in CI)
 	RUN_LIVE_INTEGRATION=1 $(BIN)/pytest -q -rs tests/test_live_integration.py
