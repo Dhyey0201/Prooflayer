@@ -19,6 +19,39 @@ A developer launches a bounded AI coding task, watches its actions in a real san
 5. Evidence view shows command hashes, exit status, artifact hashes, claim mapping and a certificate JSON export.
 6. Also demonstrate a policy-denied attempt to read `.env.production` via OpenShell, and a positive verification case.
 
+## How a run becomes a certificate
+
+```mermaid
+sequenceDiagram
+    participant Browser as Web (Next.js)
+    participant API as API (FastAPI)
+    participant Worker as Orchestrator worker
+    participant Sandbox as Agent sandbox<br/>(mock or OpenShell)
+    participant Model as Nemotron / scripted agent
+    participant Verifier as Independent verifier<br/>(Docker, separate from the agent)
+
+    Browser->>API: POST /runs (template, Idempotency-Key)
+    API-->>Browser: 201 queued
+    Worker->>Sandbox: provision (per-fixture policy)
+    Worker->>Model: bounded step loop
+    Model-->>Worker: typed actions + untrusted claim
+    Sandbox-->>Worker: tool results, policy denials (events)
+    Worker->>Sandbox: release + snapshot workspace
+    Worker->>Verifier: pinned checks against snapshot<br/>(agent never touches this environment)
+    Verifier-->>Worker: measured PASS/FAIL/INCONCLUSIVE per check
+    Worker->>API: issue certificate (verdict, claims, manifest)
+    Browser->>API: GET /runs/{id}/certificate
+    API-->>Browser: certificate + X-Certificate-SHA256
+    Browser->>API: POST /runs/{id}/challenge (optional)
+    API->>Verifier: run one model-proposed, statically-validated test
+    Verifier-->>Browser: challenge outcome (certificate unchanged)
+```
+
+The agent's claim and the verifier's measurement are produced by two
+different components that never share an environment — the certificate
+compares them, it never takes the agent's word (`docs/02_ARCHITECTURE_SECURITY.md`
+has the full trust-boundary breakdown).
+
 ## Non-negotiable acceptance
 - Every status has a server-side evidence source, never a fabricated UI value.
 - One real end-to-end execution path with Nemotron on Nebius Token Factory.
@@ -162,6 +195,14 @@ original certificate check). See `apps/web/README.md` for scripts (`lint`,
 6. `docs/06_DEMO_SUBMISSION.md` — judged demo, copy and final checklist.
 7. `contracts/openapi.yaml`, `contracts/schemas.json` — contract-first interfaces.
 8. `docs/PROGRESS_LOG.md` — per-commit evidence and handoff notes.
+
+## Honest known limitations
+- OpenShell enforcement is separate infrastructure from ProofLayer; our added value is independently checking the task outcome, not the sandbox implementation itself.
+- Tests cannot prove the absence of every bug — a PASS means the pinned checks passed in the recorded verifier image, not broad correctness or compatibility.
+- The hash chain and manifest are tamper **evidence**, not tamper **prevention**: they detect an altered log or a rewritten database, but nothing is signed, so this is not non-repudiable against someone who controls both the live database and the detached ledger.
+- The independent verifier must be independently provisioned (a working Docker daemon, or OpenShell for the agent side) — without it, every executed check reports INCONCLUSIVE rather than a fabricated result.
+- Model-generated proof-challenge tests are useful but still require a secure runner (never executed outside the verifier) and a clear, narrow definition of what they're checking; static AST validation rejects obviously dangerous code but is explicitly documented as *not* a security boundary on its own — the verifier's container isolation is.
+- The benchmark harness (quantified detection recall, false-positive rate, overhead) is Commit 13 and had not merged as of this README's last update; see `docs/PROGRESS_LOG.md` for current status before citing any number from this project as measured.
 
 ## Principle: one trunk, one active writer
 The initial seven-day plan alternates commits: Dhyey pushes, Ancy pulls and extends, Ancy pushes, Dhyey pulls and extends. For simplicity, use a protected `main` with a single active feature branch at a time and review PRs. **Never both modify the same local unpushed branch simultaneously.** No force-push, no committing credentials.

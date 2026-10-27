@@ -3,6 +3,7 @@ import { NavLink } from "./NavLink";
 export const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
   { href: "/runs", label: "Runs" },
+  { href: "/benchmark", label: "Benchmark" },
 ] as const;
 
 export function Sidebar() {
