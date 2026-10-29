@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
+from prooflayer_api.config import Settings
 from tests.conftest import FAKE_NEBIUS_KEY
+
+ENV_EXAMPLE = Path(__file__).resolve().parents[1] / ".env.example"
 
 
 def test_defaults_boot_in_mock_mode_without_any_key(make_settings) -> None:
@@ -45,3 +49,17 @@ def test_settings_read_from_environment(monkeypatch, make_settings) -> None:
 def test_hard_limits_are_bounded(make_settings) -> None:
     with pytest.raises(ValidationError):
         make_settings(PROOFLAYER_MAX_CONCURRENT_RUNS=50)
+
+
+def test_env_example_copied_verbatim_loads() -> None:
+    # The README says `cp .env.example .env`; that file must boot as-is.
+    settings = Settings(_env_file=ENV_EXAMPLE)
+    assert settings.mock_mode is True
+    assert settings.verifier_image_id is None
+    assert settings.nebius_configured is False
+
+
+def test_blank_verifier_pin_is_unpinned_but_malformed_pin_is_rejected(make_settings) -> None:
+    assert make_settings(VERIFIER_IMAGE_ID="").verifier_image_id is None
+    with pytest.raises(ValidationError, match="VERIFIER_IMAGE_ID"):
+        make_settings(VERIFIER_IMAGE_ID="sha256:not-a-digest")
