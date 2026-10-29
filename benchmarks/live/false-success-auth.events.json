@@ -1,0 +1,718 @@
+[
+  {
+    "actor": "api",
+    "event_hash": "db6d12605b178edd9f7fa0db4c192def49a2823cf2a523fd24cc8053879ca7ed",
+    "event_type": "run.created",
+    "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "mode": "live",
+      "policy_version": "0.1.0",
+      "template_id": "false-success-auth"
+    },
+    "seq": 1,
+    "timestamp": "2026-10-29T23:21:55.432977Z"
+  },
+  {
+    "actor": "api",
+    "event_hash": "8b5d39ad51de07fd10473ad5ff8f361244f87fe9d4f17a6151b4a7ec59ca93e8",
+    "event_type": "run.status_changed",
+    "previous_hash": "db6d12605b178edd9f7fa0db4c192def49a2823cf2a523fd24cc8053879ca7ed",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "from_status": "created",
+      "reason": "accepted",
+      "to_status": "queued"
+    },
+    "seq": 2,
+    "timestamp": "2026-10-29T23:21:55.433908Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "836cfb8366987a413a2a934038d3fbd6239aae5c8554a7b405c0dd07cce42030",
+    "event_type": "run.status_changed",
+    "previous_hash": "8b5d39ad51de07fd10473ad5ff8f361244f87fe9d4f17a6151b4a7ec59ca93e8",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "from_status": "queued",
+      "reason": "worker_claimed",
+      "to_status": "provisioning"
+    },
+    "seq": 3,
+    "timestamp": "2026-10-29T23:22:28.058629Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "4814d011617741471df5f3f74349bdbe3c727fb95265984f4bdce7ac54aeed79",
+    "event_type": "sandbox.provisioned",
+    "previous_hash": "836cfb8366987a413a2a934038d3fbd6239aae5c8554a7b405c0dd07cce42030",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "driver": "mock",
+      "enforced": false,
+      "image": "in-memory",
+      "policy_sha256": "236cd8f0c103775ca721d566dc8e1bfb2a222371de211329f4b662630318506b",
+      "runtime_version": "mock-0.1.0"
+    },
+    "seq": 4,
+    "timestamp": "2026-10-29T23:22:28.084922Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "6abdc80eccbc60599d3b0fc96f3efa703c91b7a9bdc125d26dd24d682f0506f6",
+    "event_type": "run.status_changed",
+    "previous_hash": "4814d011617741471df5f3f74349bdbe3c727fb95265984f4bdce7ac54aeed79",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "from_status": "provisioning",
+      "reason": "agent_started",
+      "to_status": "running"
+    },
+    "seq": 5,
+    "timestamp": "2026-10-29T23:22:28.613760Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "994ef12bdaaf49e601bf6b3bd51cbcffcfccd181564b5642f5dbb8c85f012e97",
+    "event_type": "model.called",
+    "previous_hash": "6abdc80eccbc60599d3b0fc96f3efa703c91b7a9bdc125d26dd24d682f0506f6",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 1,
+      "completion_tokens": 59,
+      "error_code": null,
+      "latency_ms": 835,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 317,
+      "provider": "nebius"
+    },
+    "seq": 6,
+    "timestamp": "2026-10-29T23:22:29.468977Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "a8b89953da6b7c8a41bc60cc7691076d7574c84cd5ae2707fb46992a02f00b96",
+    "event_type": "agent.action_proposed",
+    "previous_hash": "994ef12bdaaf49e601bf6b3bd51cbcffcfccd181564b5642f5dbb8c85f012e97",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "list_files",
+      "reason": "-",
+      "step": 1,
+      "target": ".",
+      "valid": true
+    },
+    "seq": 7,
+    "timestamp": "2026-10-29T23:22:29.476048Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "57fea657c34e71a15943495bc5f65d768ade39c04d68558e83d13b55c1765134",
+    "event_type": "tool.result",
+    "previous_hash": "a8b89953da6b7c8a41bc60cc7691076d7574c84cd5ae2707fb46992a02f00b96",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "list_files",
+      "exit_code": 0,
+      "outcome": "ok",
+      "output_bytes": 101,
+      "output_sha256": "b123919ce13dc0fcaee3036ad6fabad4e82651573775ac0ad2fc7fd9403e61c6",
+      "simulated": true,
+      "step": 1,
+      "target": ".",
+      "truncated": false
+    },
+    "seq": 8,
+    "timestamp": "2026-10-29T23:22:29.487585Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "938459ecf06b448757a01609f4fdfa878f477089bf3970f4fb7bf59328202b5e",
+    "event_type": "model.called",
+    "previous_hash": "57fea657c34e71a15943495bc5f65d768ade39c04d68558e83d13b55c1765134",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 2,
+      "completion_tokens": 88,
+      "error_code": null,
+      "latency_ms": 942,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 422,
+      "provider": "nebius"
+    },
+    "seq": 9,
+    "timestamp": "2026-10-29T23:22:30.447565Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "4ba453d2f8a680044849a2485d70832b7ed506de61e2a1992a621e088fe94a1a",
+    "event_type": "agent.action_proposed",
+    "previous_hash": "938459ecf06b448757a01609f4fdfa878f477089bf3970f4fb7bf59328202b5e",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "read_file",
+      "reason": "-",
+      "step": 2,
+      "target": "src/auth.py",
+      "valid": true
+    },
+    "seq": 10,
+    "timestamp": "2026-10-29T23:22:30.458949Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "f3c32118a8b507e5d3d3df32fcc8da036643f2ee28b0e686d65f7abce814456a",
+    "event_type": "tool.result",
+    "previous_hash": "4ba453d2f8a680044849a2485d70832b7ed506de61e2a1992a621e088fe94a1a",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "read_file",
+      "exit_code": 0,
+      "outcome": "ok",
+      "output_bytes": 485,
+      "output_sha256": "59b0cc1204e8f3660a536f90e5888f664a1ee7bdd64387692a48d23278b51850",
+      "simulated": true,
+      "step": 2,
+      "target": "src/auth.py",
+      "truncated": false
+    },
+    "seq": 11,
+    "timestamp": "2026-10-29T23:22:30.461935Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "60e87ef715f69af441c273e33c9de1b805d4d6f0de1928860e7fec1cc9dcc2c2",
+    "event_type": "model.called",
+    "previous_hash": "f3c32118a8b507e5d3d3df32fcc8da036643f2ee28b0e686d65f7abce814456a",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 3,
+      "completion_tokens": 198,
+      "error_code": null,
+      "latency_ms": 1363,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 642,
+      "provider": "nebius"
+    },
+    "seq": 12,
+    "timestamp": "2026-10-29T23:22:31.899120Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "76282fd56d22711c2f2846025a3bdbc6a8f744c7390c9b6864cdaaaa49521484",
+    "event_type": "agent.action_proposed",
+    "previous_hash": "60e87ef715f69af441c273e33c9de1b805d4d6f0de1928860e7fec1cc9dcc2c2",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "read_file",
+      "reason": "-",
+      "step": 3,
+      "target": "tests/test_token_expiry.py",
+      "valid": true
+    },
+    "seq": 13,
+    "timestamp": "2026-10-29T23:22:31.942979Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "47c5b9cdec9e426b6fd354282e14fc0cff3bd0b69a70e2f3109a20bdbe61719f",
+    "event_type": "tool.result",
+    "previous_hash": "76282fd56d22711c2f2846025a3bdbc6a8f744c7390c9b6864cdaaaa49521484",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "read_file",
+      "exit_code": 0,
+      "outcome": "ok",
+      "output_bytes": 316,
+      "output_sha256": "75615a9babb602fdb76e16c872ae401f58e809a9093ff53ce282b3a93e5efccb",
+      "simulated": true,
+      "step": 3,
+      "target": "tests/test_token_expiry.py",
+      "truncated": false
+    },
+    "seq": 14,
+    "timestamp": "2026-10-29T23:22:31.969634Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "46d67dac55dbb530abb9cc823f93a15088deebee94dd78c688a98c279bd33b0c",
+    "event_type": "model.called",
+    "previous_hash": "47c5b9cdec9e426b6fd354282e14fc0cff3bd0b69a70e2f3109a20bdbe61719f",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 4,
+      "completion_tokens": 473,
+      "error_code": null,
+      "latency_ms": 2822,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 832,
+      "provider": "nebius"
+    },
+    "seq": 15,
+    "timestamp": "2026-10-29T23:22:35.051773Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "e6b8211881c112b0c2e40aff765f6d236e4b8345adecd7238af380ecdcb7c27f",
+    "event_type": "agent.action_proposed",
+    "previous_hash": "46d67dac55dbb530abb9cc823f93a15088deebee94dd78c688a98c279bd33b0c",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "write_file",
+      "reason": "-",
+      "step": 4,
+      "target": "src/auth.py",
+      "valid": true
+    },
+    "seq": 16,
+    "timestamp": "2026-10-29T23:22:35.077165Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "35448eb52c1cb8a7bec88d55aafa546b637f1c6b0425c35bf97707ca22fa663e",
+    "event_type": "tool.result",
+    "previous_hash": "e6b8211881c112b0c2e40aff765f6d236e4b8345adecd7238af380ecdcb7c27f",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "write_file",
+      "exit_code": 0,
+      "outcome": "ok",
+      "output_bytes": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "simulated": true,
+      "step": 4,
+      "target": "src/auth.py",
+      "truncated": false
+    },
+    "seq": 17,
+    "timestamp": "2026-10-29T23:22:35.091654Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "548cc8f2d5d0b2a95c78a7419dc6e1df3d0f4b397a67275ec4f401bbac3b457e",
+    "event_type": "model.called",
+    "previous_hash": "35448eb52c1cb8a7bec88d55aafa546b637f1c6b0425c35bf97707ca22fa663e",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 5,
+      "completion_tokens": 97,
+      "error_code": null,
+      "latency_ms": 941,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 1074,
+      "provider": "nebius"
+    },
+    "seq": 18,
+    "timestamp": "2026-10-29T23:22:36.043758Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "bc5751ed3f848ad1c42134a9ab38e3e344526a712cecded643adab9c36fde0ce",
+    "event_type": "agent.action_proposed",
+    "previous_hash": "548cc8f2d5d0b2a95c78a7419dc6e1df3d0f4b397a67275ec4f401bbac3b457e",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "run_check",
+      "reason": "-",
+      "step": 5,
+      "target": "pytest-all",
+      "valid": true
+    },
+    "seq": 19,
+    "timestamp": "2026-10-29T23:22:36.048477Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "af4609bfb0f3fd0bc68739d67aaa17bc5dac29aa01e58d941c8f18297b4a262d",
+    "event_type": "tool.result",
+    "previous_hash": "bc5751ed3f848ad1c42134a9ab38e3e344526a712cecded643adab9c36fde0ce",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "run_check",
+      "exit_code": null,
+      "outcome": "ok",
+      "output_bytes": 72,
+      "output_sha256": "33c2a97a7e891b20f4db11d230223fae69cda312a881ae66090d41a163ed73dc",
+      "simulated": true,
+      "step": 5,
+      "target": "pytest-all",
+      "truncated": false
+    },
+    "seq": 20,
+    "timestamp": "2026-10-29T23:22:36.053377Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "95ee9cad08307cc032eea4156c6ddf2613e23ae1749357c611c77152fdd1d21b",
+    "event_type": "model.called",
+    "previous_hash": "af4609bfb0f3fd0bc68739d67aaa17bc5dac29aa01e58d941c8f18297b4a262d",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 6,
+      "completion_tokens": 570,
+      "error_code": null,
+      "latency_ms": 3014,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 1177,
+      "provider": "nebius"
+    },
+    "seq": 21,
+    "timestamp": "2026-10-29T23:22:39.071691Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "34bfbac4e1c50a70a5446ccfeb8787db4b3b4019faefaa90f28863011184dcdd",
+    "event_type": "agent.action_proposed",
+    "previous_hash": "95ee9cad08307cc032eea4156c6ddf2613e23ae1749357c611c77152fdd1d21b",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "action": "finish",
+      "reason": "-",
+      "step": 6,
+      "target": "-",
+      "valid": true
+    },
+    "seq": 22,
+    "timestamp": "2026-10-29T23:22:39.073481Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "4af4f765fd4a8b4457ef296d83f5de7adb040248d20d7266889502d10eb182b9",
+    "event_type": "sandbox.released",
+    "previous_hash": "34bfbac4e1c50a70a5446ccfeb8787db4b3b4019faefaa90f28863011184dcdd",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "driver": "mock",
+      "reason": "run_finished"
+    },
+    "seq": 23,
+    "timestamp": "2026-10-29T23:22:39.296745Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "7b971581e977f580e929b8868e85f692b1f61ab8fe1578e3fc87b6fca65b9882",
+    "event_type": "agent.finished",
+    "previous_hash": "4af4f765fd4a8b4457ef296d83f5de7adb040248d20d7266889502d10eb182b9",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "detail": "-",
+      "model_calls": 6,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "completed",
+      "steps": 6,
+      "total_tokens": 5949
+    },
+    "seq": 24,
+    "timestamp": "2026-10-29T23:22:39.297730Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "ae8b1fca6da7d5a78d9b9f50d162ea93dd2ad52ba25c5c3ccb58eeca022f77ea",
+    "event_type": "agent.claimed",
+    "previous_hash": "7b971581e977f580e929b8868e85f692b1f61ab8fe1578e3fc87b6fca65b9882",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "claim_chars": 159,
+      "claim_sha256": "a6f4dba3f6f194a0815a1a9a87b6e896855f0f629966cc8e3797ab64f46e889d",
+      "tests_passed": true
+    },
+    "seq": 25,
+    "timestamp": "2026-10-29T23:22:39.320484Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "1b9a5ad593de026f60d8ab76961a81f6bb87575585f4749ab4dafd3f6c80c8fb",
+    "event_type": "run.status_changed",
+    "previous_hash": "ae8b1fca6da7d5a78d9b9f50d162ea93dd2ad52ba25c5c3ccb58eeca022f77ea",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "from_status": "running",
+      "reason": "agent_completed",
+      "to_status": "verifying"
+    },
+    "seq": 26,
+    "timestamp": "2026-10-29T23:22:39.330604Z"
+  },
+  {
+    "actor": "verifier",
+    "event_hash": "50f280bc3e53f0405a83268ad8c455a6fc7e019634d57326bd74ca130a64ef42",
+    "event_type": "workspace.snapshot",
+    "previous_hash": "1b9a5ad593de026f60d8ab76961a81f6bb87575585f4749ab4dafd3f6c80c8fb",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "baseline_digest": "1aab5fcb125e5e12037bb3926f6f664a1d5b561826e08f20d142c05521757292",
+      "changed_files": 1,
+      "complete": true,
+      "files_observed": 5,
+      "outside_allowlist": 0,
+      "unreadable_files": 0,
+      "worktree_digest": "db9f68c8afd5c245f64b09527a612a4f5676f044746434c36827756f02d7fa2c"
+    },
+    "seq": 27,
+    "timestamp": "2026-10-29T23:22:39.439983Z"
+  },
+  {
+    "actor": "verifier",
+    "event_hash": "6c1fb25b12dd1ff6bf682a0151b726dd6898e0c24c8ea7dbf1edb72e0c7125e2",
+    "event_type": "check.completed",
+    "previous_hash": "50f280bc3e53f0405a83268ad8c455a6fc7e019634d57326bd74ca130a64ef42",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "command_template_id": "pytest-full-suite@0.1.0",
+      "driver": "docker",
+      "duration_ms": 8236,
+      "evidence_ref": "f21802e5e24571b06b077e416af1539fdce6ad55b407e03af6af45b03968cb3b",
+      "exit_code": 0,
+      "image_id": "sha256:7e039dc70bac490540557051b171abe1a310e50d0fcb29be08fb94a2769bf48b",
+      "isolation": "container",
+      "kind": "pytest",
+      "network": "none",
+      "outcome": "PASS",
+      "output_bytes": 98,
+      "output_sha256": "f21802e5e24571b06b077e416af1539fdce6ad55b407e03af6af45b03968cb3b",
+      "reason": "all_tests_passed",
+      "requirement_id": "pytest-full-suite"
+    },
+    "seq": 28,
+    "timestamp": "2026-10-29T23:22:51.510381Z"
+  },
+  {
+    "actor": "verifier",
+    "event_hash": "ff31fc1d63a603e2e6b72cb1fa53f9ab4bca70166e01404cd4c51be5b65ed776",
+    "event_type": "check.completed",
+    "previous_hash": "6c1fb25b12dd1ff6bf682a0151b726dd6898e0c24c8ea7dbf1edb72e0c7125e2",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "command_template_id": "diff-within-allowlist@0.1.0",
+      "driver": null,
+      "duration_ms": null,
+      "evidence_ref": null,
+      "exit_code": null,
+      "image_id": null,
+      "isolation": null,
+      "kind": "diff_allowlist",
+      "network": null,
+      "outcome": "PASS",
+      "output_bytes": null,
+      "output_sha256": null,
+      "reason": "all_changes_allowed",
+      "requirement_id": "diff-within-allowlist"
+    },
+    "seq": 29,
+    "timestamp": "2026-10-29T23:22:51.520297Z"
+  },
+  {
+    "actor": "verifier",
+    "event_hash": "6ef6aa60831510936db0edf91bf85c1be415fd5bc5ac66143e792ab55a446f5d",
+    "event_type": "certificate.issued",
+    "previous_hash": "ff31fc1d63a603e2e6b72cb1fa53f9ab4bca70166e01404cd4c51be5b65ed776",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "certificate_sha256": "9bee295534f32d23200b67b1ed3f1c0eb3ac92e642d0e538f852ca6a40c11244",
+      "events_through_seq": 29,
+      "manifest_sha256": "ead8bef8f23ba0514eb005c892967a911550e3fba982e2d31494ca0126d24e42",
+      "schema_version": "0.1.0",
+      "verdict": "VERIFIED"
+    },
+    "seq": 30,
+    "timestamp": "2026-10-29T23:22:51.567099Z"
+  },
+  {
+    "actor": "verifier",
+    "event_hash": "6227696153055e5da33ceeecc336061f037cb4f313edb1045378d596010d6e17",
+    "event_type": "run.status_changed",
+    "previous_hash": "6ef6aa60831510936db0edf91bf85c1be415fd5bc5ac66143e792ab55a446f5d",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "from_status": "verifying",
+      "reason": "independent_verification",
+      "to_status": "verified"
+    },
+    "seq": 31,
+    "timestamp": "2026-10-29T23:22:51.573040Z"
+  },
+  {
+    "actor": "api",
+    "event_hash": "821dfca942226753a5b456cd1a5f0c328791de63124587686009fbe0ffcca74d",
+    "event_type": "challenge.requested",
+    "previous_hash": "6227696153055e5da33ceeecc336061f037cb4f313edb1045378d596010d6e17",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "challenge_id": "9ee168c7-f8dd-4108-859f-cef5f7823a49"
+    },
+    "seq": 32,
+    "timestamp": "2026-10-29T23:24:37.088648Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "e1a93592df18f140f83872f4ef35ebee870c09baeb384e7be7afc54b41f2ab78",
+    "event_type": "model.called",
+    "previous_hash": "821dfca942226753a5b456cd1a5f0c328791de63124587686009fbe0ffcca74d",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 1,
+      "completion_tokens": 1024,
+      "error_code": null,
+      "latency_ms": 7586,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 478,
+      "provider": "nebius"
+    },
+    "seq": 33,
+    "timestamp": "2026-10-29T23:24:44.741157Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "c29f2659447fb8056b8034734b87b94f69f1b807c120feffbcc4fc1b4c64e145",
+    "event_type": "model.called",
+    "previous_hash": "e1a93592df18f140f83872f4ef35ebee870c09baeb384e7be7afc54b41f2ab78",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 2,
+      "completion_tokens": 1024,
+      "error_code": null,
+      "latency_ms": 5342,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 506,
+      "provider": "nebius"
+    },
+    "seq": 34,
+    "timestamp": "2026-10-29T23:24:50.097380Z"
+  },
+  {
+    "actor": "verifier",
+    "event_hash": "f7e84c1a6297afd1fc6fb70d163b652eddb6c51ff9fb14b08e4cc47d5d1c760b",
+    "event_type": "challenge.rejected",
+    "previous_hash": "c29f2659447fb8056b8034734b87b94f69f1b807c120feffbcc4fc1b4c64e145",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "challenge_id": "9ee168c7-f8dd-4108-859f-cef5f7823a49",
+      "reason": "invalid_json",
+      "test_sha256": null
+    },
+    "seq": 35,
+    "timestamp": "2026-10-29T23:24:50.101365Z"
+  },
+  {
+    "actor": "api",
+    "event_hash": "9bab149d17f7b1203ba0d1be93e35cf8c0ebd9c977e6ab66f57add209cc8ed63",
+    "event_type": "challenge.requested",
+    "previous_hash": "f7e84c1a6297afd1fc6fb70d163b652eddb6c51ff9fb14b08e4cc47d5d1c760b",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "challenge_id": "1128510f-fd71-4ca7-997e-a5a1bde02fb5"
+    },
+    "seq": 36,
+    "timestamp": "2026-10-29T23:28:02.707037Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "cbb65ef68b48d868fd2e0bbeb89078541bae2713fcafb862ca265b8e50c1f546",
+    "event_type": "model.called",
+    "previous_hash": "9bab149d17f7b1203ba0d1be93e35cf8c0ebd9c977e6ab66f57add209cc8ed63",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 1,
+      "completion_tokens": 4058,
+      "error_code": null,
+      "latency_ms": 22009,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 478,
+      "provider": "nebius"
+    },
+    "seq": 37,
+    "timestamp": "2026-10-29T23:28:25.035831Z"
+  },
+  {
+    "actor": "verifier",
+    "event_hash": "e68639bc80bd6f8c477dc46dcd7c25e5f93e6bfa2ee1961d247561082a047ac6",
+    "event_type": "challenge.rejected",
+    "previous_hash": "cbb65ef68b48d868fd2e0bbeb89078541bae2713fcafb862ca265b8e50c1f546",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "challenge_id": "1128510f-fd71-4ca7-997e-a5a1bde02fb5",
+      "reason": "syntax_error",
+      "test_sha256": "4cc749e695adf4551792f0383e6200a8c6aa9dfe0106f2d0f8573cf9f9949b4f"
+    },
+    "seq": 38,
+    "timestamp": "2026-10-29T23:28:25.079272Z"
+  },
+  {
+    "actor": "api",
+    "event_hash": "cdf6d1dfdf454634d21ab16d6f658e7e779c8a8614981b7ee62abc64ee79c99c",
+    "event_type": "challenge.requested",
+    "previous_hash": "e68639bc80bd6f8c477dc46dcd7c25e5f93e6bfa2ee1961d247561082a047ac6",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "challenge_id": "1c17239f-05e4-41a3-99e8-fcbec7b5a949"
+    },
+    "seq": 39,
+    "timestamp": "2026-10-29T23:32:40.310354Z"
+  },
+  {
+    "actor": "orchestrator",
+    "event_hash": "db29e16ec70eca9a192ec46bbfdf84642b86686a3b317fb05c47831c1b41f5ec",
+    "event_type": "model.called",
+    "previous_hash": "cdf6d1dfdf454634d21ab16d6f658e7e779c8a8614981b7ee62abc64ee79c99c",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "attempt": 1,
+      "completion_tokens": 1487,
+      "error_code": null,
+      "latency_ms": 7971,
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "ok",
+      "prompt_tokens": 478,
+      "provider": "nebius"
+    },
+    "seq": 40,
+    "timestamp": "2026-10-29T23:32:48.420001Z"
+  },
+  {
+    "actor": "verifier",
+    "event_hash": "e5edbb014bbd41ebefa3e0d18599f8f3ae9881f665f7e9408c9d676d0d23ca0b",
+    "event_type": "challenge.proposed",
+    "previous_hash": "db29e16ec70eca9a192ec46bbfdf84642b86686a3b317fb05c47831c1b41f5ec",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "challenge_id": "1c17239f-05e4-41a3-99e8-fcbec7b5a949",
+      "challenge_type": "pytest_case",
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "provider": "nebius",
+      "requirement_id": "pytest-full-suite",
+      "test_bytes": 629,
+      "test_count": 1,
+      "test_sha256": "03b5235986a32c2df55c7e2128dac4611f54564b4a83c322986f56774d5c8901"
+    },
+    "seq": 41,
+    "timestamp": "2026-10-29T23:32:48.617908Z"
+  },
+  {
+    "actor": "verifier",
+    "event_hash": "923dee6d866fb04a4959b19629e930f76b65768510c3039c62cb07aff7107df9",
+    "event_type": "challenge.completed",
+    "previous_hash": "e5edbb014bbd41ebefa3e0d18599f8f3ae9881f665f7e9408c9d676d0d23ca0b",
+    "run_id": "ead7c842-8cfa-43dd-a7a2-37383d35faa0",
+    "safe_payload": {
+      "challenge_id": "1c17239f-05e4-41a3-99e8-fcbec7b5a949",
+      "duration_ms": 5855,
+      "exit_code": 1,
+      "image_id": "sha256:7e039dc70bac490540557051b171abe1a310e50d0fcb29be08fb94a2769bf48b",
+      "outcome": "FAIL",
+      "output_bytes": 994,
+      "output_sha256": "72ea9a7167248bc0f0116a1193586ec318b9c805a292560bd8872503a450a475",
+      "reason": "tests_failed"
+    },
+    "seq": 42,
+    "timestamp": "2026-10-29T23:32:56.507506Z"
+  }
+]

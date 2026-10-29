@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from prooflayer_api.enums import TemplateId
 from prooflayer_api.evidence.hashchain import GENESIS_HASH, verify_chain
 from prooflayer_api.main import DatabaseNotMigratedError, create_app
+from tests.conftest import FAKE_NEBIUS_KEY
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -139,6 +140,23 @@ def test_live_mode_is_refused_until_a_live_runtime_exists(api: TestClient) -> No
     assert response.status_code == 422
     assert "enforcing OpenShell sandbox" in response.json()["error"]["message"]
     assert api.get("/api/v1/runs").json() == []
+
+
+def test_live_mode_on_mock_sandbox_needs_the_explicit_opt_in(
+    make_settings, migrated_db_url: str
+) -> None:
+    live = {"NEBIUS_API_KEY": FAKE_NEBIUS_KEY, "PROOFLAYER_MOCK_MODE": False}
+    body = {"template_id": "success-validation", "mode": "live"}
+    with TestClient(create_app(make_settings(DATABASE_URL=migrated_db_url, **live))) as client:
+        assert client.post("/api/v1/runs", json=body).status_code == 422
+    opted_in = make_settings(
+        DATABASE_URL=migrated_db_url, PROOFLAYER_ALLOW_UNENFORCED_LIVE=True, **live
+    )
+    with TestClient(create_app(opted_in)) as client:
+        response = client.post("/api/v1/runs", json=body)
+        assert response.status_code == 201
+        assert response.json()["mode"] == "live"
+        assert client.get("/api/v1/capabilities").json()["unenforced_live_allowed"] is True
 
 
 def test_mode_defaults_to_fixture(api: TestClient) -> None:

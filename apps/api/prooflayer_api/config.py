@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     evidence_ledger_path: str = Field(
         default="./data/evidence-ledger.jsonl", alias="PROOFLAYER_EVIDENCE_LEDGER"
     )
+    # Development fallback (docs/03): let a live model drive the agent in the mock sandbox
+    # when no enforcing runtime exists on this host. Off by default, refused in production;
+    # every such run records enforced=false and its certificate says so.
+    allow_unenforced_live: bool = Field(default=False, alias="PROOFLAYER_ALLOW_UNENFORCED_LIVE")
     max_challenges_per_run: int = Field(
         default=3, ge=0, le=20, alias="PROOFLAYER_MAX_CHALLENGES_PER_RUN"
     )
@@ -125,6 +129,8 @@ class Settings(BaseSettings):
     def _require_key_outside_mock_mode(self) -> Settings:
         if not self.mock_mode and not self.nebius_configured:
             raise ValueError("NEBIUS_API_KEY is required when PROOFLAYER_MOCK_MODE=false")
+        if self.allow_unenforced_live and self.environment == "production":
+            raise ValueError("PROOFLAYER_ALLOW_UNENFORCED_LIVE is not allowed in production")
         return self
 
     @property

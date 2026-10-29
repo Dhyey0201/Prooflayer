@@ -89,8 +89,10 @@ class SandboxStatusCache:
 
 
 def live_runtime_available(settings: Settings, sandbox: SandboxStatusCache) -> bool:
-    """Live mode needs a live model AND an enforcing sandbox; never one without the other."""
-    return settings.nebius_configured and not settings.mock_mode and sandbox.enforced
+    """Live mode needs a live model AND an enforcing sandbox, unless the operator opted in
+    to the unenforced development fallback (``PROOFLAYER_ALLOW_UNENFORCED_LIVE``)."""
+    live_model = settings.nebius_configured and not settings.mock_mode
+    return live_model and (sandbox.enforced or settings.allow_unenforced_live)
 
 
 TransportFactory = Callable[[Run], ModelTransport]

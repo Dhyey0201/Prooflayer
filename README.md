@@ -127,7 +127,11 @@ appended to a detached ledger (`PROOFLAYER_EVIDENCE_LEDGER`), so
 `python -m prooflayer_api.evidence.verify_cli` can detect edits to events, check results
 or even a full database rewrite. Nothing is signed: this is tamper evidence, not
 non-repudiation. `mode: "live"` returns 422 unless a Nebius key is set, mock mode is off
-**and** an OpenShell sandbox is reachable.
+**and** an OpenShell sandbox is reachable. The one exception is the opt-in development
+fallback `PROOFLAYER_ALLOW_UNENFORCED_LIVE=true` (refused when `PROOFLAYER_ENV=production`):
+Nemotron then drives the agent in the mock sandbox, every such run records
+`enforced: false`, its certificate lists the mock sandbox as a limitation, and checks that
+need enforcement (e.g. no forbidden-access attempts) stay INCONCLUSIVE.
 
 A **proof challenge** (`POST /runs/{id}/challenge`, certified runs only) asks the model
 (scripted in fixture mode, Nemotron in live mode) for one pytest test matching
@@ -149,6 +153,21 @@ RUN_LIVE_INTEGRATION=1 NEBIUS_API_KEY=... make live-smoke   # real Nemotron + Op
 
 The OpenShell driver counts a sandbox as enforced only after its log shows the
 Landlock ruleset applied; otherwise the run ends in `error`, never "secure".
+
+**Live Nemotron evidence:** three live runs and their proof challenges (real
+`nvidia/nemotron-3-super-120b-a12b` on Nebius, real Docker verifier, mock agent sandbox)
+are exported in `benchmarks/live/` with their ledger entries, so anyone can re-check them
+offline:
+
+```bash
+cd apps/api && ../../.venv/bin/python -m prooflayer_api.evidence.verify_cli \
+  --certificate ../../benchmarks/live/success-validation.certificate.json \
+  --events ../../benchmarks/live/success-validation.events.json \
+  --ledger ../../benchmarks/live/evidence-ledger.jsonl
+```
+
+Results and the OpenShell blocker (Docker Desktop's kernel has no Landlock) are in
+`docs/07_BENCHMARK_LIMITATIONS.md`.
 
 Optional configuration: `cp .env.example .env` (git-ignored). Setting
 `PROOFLAYER_MOCK_MODE=false` requires `NEBIUS_API_KEY`; the API refuses to start otherwise.
@@ -212,6 +231,7 @@ original certificate check). See `apps/web/README.md` for scripts (`lint`,
 
 ## Honest known limitations
 - OpenShell enforcement is separate infrastructure from ProofLayer; our added value is independently checking the task outcome, not the sandbox implementation itself.
+- **No run so far has had an enforced agent sandbox.** OpenShell 0.1.5 was installed and its gateway ran on the reference Mac, but every sandbox refused to start because Docker Desktop's Linux kernel lacks Landlock (`kernel lacks CONFIG_SECURITY_LANDLOCK`). The live Nemotron runs therefore used the mock sandbox, say so in their evidence, and need a Linux host with Landlock for real enforcement.
 - Tests cannot prove the absence of every bug — a PASS means the pinned checks passed in the recorded verifier image, not broad correctness or compatibility.
 - The hash chain and manifest are tamper **evidence**, not tamper **prevention**: they detect an altered log or a rewritten database, but nothing is signed, so this is not non-repudiable against someone who controls both the live database and the detached ledger.
 - The independent verifier must be independently provisioned (a working Docker daemon, or OpenShell for the agent side) — without it, every executed check reports INCONCLUSIVE rather than a fabricated result.

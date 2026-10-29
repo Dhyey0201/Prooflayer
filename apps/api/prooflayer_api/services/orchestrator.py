@@ -188,7 +188,7 @@ class RunOrchestrator:
                     "runtime_version": info.runtime_version[:200],
                 },
             )
-            if mode is RunMode.LIVE and not info.enforced:
+            if mode is RunMode.LIVE and not info.enforced and not settings.allow_unenforced_live:
                 release_reason = "sandbox_not_enforced"
                 self._fail(run_id, "sandbox_not_enforced", "sandbox_not_enforced")
                 return

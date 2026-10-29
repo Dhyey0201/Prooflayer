@@ -35,6 +35,8 @@ class CapabilitiesResponse(BaseModel):
     # Each sandbox's enforcement is confirmed again when it is provisioned.
     openshell_available: bool
     sandbox_enforced: bool
+    # Live runs may use the unenforced mock sandbox (development fallback, opt-in).
+    unenforced_live_allowed: bool
     # The verifier runtime answers and its pinned image is present.
     independent_verifier_available: bool
     tavily_enabled: bool
@@ -75,6 +77,7 @@ def build_capabilities(
         live_model_enabled=settings.nebius_configured and not settings.mock_mode,
         openshell_available=enforced,
         sandbox_enforced=enforced,
+        unenforced_live_allowed=settings.allow_unenforced_live,
         independent_verifier_available=verifier.get().available if verifier else False,
         tavily_enabled=settings.tavily_configured,
     )

@@ -63,6 +63,7 @@ describe("api client", () => {
       live_model_enabled: false,
       openshell_available: false,
       sandbox_enforced: false,
+      unenforced_live_allowed: false,
       independent_verifier_available: false,
       tavily_enabled: false,
     };

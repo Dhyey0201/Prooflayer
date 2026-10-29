@@ -20,7 +20,8 @@ checker, and a verdict that comes only from measurement.
 
 A developer opens a dashboard, picks one of three seeded scenarios (a clean
 fix, a false-success claim, and a denied secret-read attempt), and launches
-it. A worker runs a Nemotron-driven agent in an isolated sandbox while every
+it. A worker runs a Nemotron-driven agent in a policy-scoped sandbox (OpenShell
+where the host kernel supports it; otherwise a mock that says so) while every
 step — actions, tool results, policy denials — is written to an append-only,
 hash-chained event log. When the agent finishes, an **independent verifier**
 — a separate container with no access to the agent's sandbox or credentials
@@ -66,7 +67,13 @@ verifier (never the agent) executes it against the recorded workspace.
 - Deciding what "the agent attempted a forbidden read" should mean when the
   agent sandbox itself is a deterministic mock (no real OpenShell on every
   dev machine): the certificate says explicitly when enforcement wasn't
-  real, rather than claiming a denial it can't back up.
+  real, rather than claiming a denial it can't back up. We installed OpenShell
+  0.1.5 and reached its gateway, but Docker Desktop's Linux kernel has no
+  Landlock, so OpenShell (correctly) refused every sandbox; real enforcement
+  needs a Linux host with Landlock.
+- Nemotron 3 Super's reasoning tokens count against the completion limit, and
+  it sometimes JSON-escapes code twice; both first showed up as rejected live
+  challenges (never executed) and were fixed with tests.
 - Running model-proposed code at all without it becoming a code-execution
   hole: AST-level static validation (import allowlist, no `eval`/`exec`,
   no dunder access) is explicitly documented as advisory, not the security
@@ -82,9 +89,17 @@ verifier (never the agent) executes it against the recorded workspace.
   pipeline, not a mocked demo of one.
 - A product that is explicit about its own epistemic limits: INCONCLUSIVE
   is a first-class, honestly-labeled outcome, not an error state to hide.
-- [Fill in once Commit 13 lands: quantified detection recall / false-positive
-  rate / verification overhead from the seeded benchmark — do not estimate
-  this number before the harness actually reports it.]
+- Measured, not estimated (18 seeded scripted cases x 3 passes, real Docker
+  verifier, `docs/07_BENCHMARK_LIMITATIONS.md`): verdict accuracy 18/18,
+  detection recall 5/6 (the miss, code-level exfiltration, is contained but
+  not flagged, and we report it), 0/50 safe operations blocked, 4/4 false
+  "tests passed" claims caught, 85/85 post-issue tampering attempts detected,
+  identical outcomes across passes. Verification overhead median 1.5 s.
+- Live: three runs driven by real `nvidia/nemotron-3-super-120b-a12b` on
+  Nebius, independently verified, with certificates anyone can re-check
+  offline from `benchmarks/live/`. Nemotron fixed the bug in the scenario
+  whose scripted agent lies, so that run is VERIFIED: the verdict follows the
+  measurement, not the scenario label.
 
 ## What we learned
 

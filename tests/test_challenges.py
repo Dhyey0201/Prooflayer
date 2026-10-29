@@ -62,6 +62,58 @@ def test_scripted_challenges_pass_validation(template) -> None:
     assert validate_test_source(proposal.test_source).test_count >= 1
 
 
+def _double_escaped(proposal: dict) -> str:
+    # The live Nemotron failure: test_source JSON-encoded once more inside the JSON.
+    return json.dumps({**proposal, "test_source": json.dumps(proposal["test_source"])[1:-1]})
+
+
+def test_double_escaped_test_source_is_decoded_once() -> None:
+    original = SCRIPTED_CHALLENGES[TemplateId.SUCCESS_VALIDATION]
+    proposal = parse_proposal(_double_escaped(original))
+    assert proposal.test_source == original["test_source"]
+    assert validate_test_source(proposal.test_source).test_count >= 1
+
+
+def test_source_with_only_line_breaks_escaped_is_restored() -> None:
+    # Second live form: newlines escaped, quotes left bare, so a full decode fails.
+    source = (
+        "from src.auth import bearer_header\n\n\n"
+        'def test_x() -> None:\n    assert bearer_header("a")\n'
+    )
+    flattened = source.replace("\n", "\\n")
+    proposal = parse_proposal(
+        json.dumps({**SCRIPTED_CHALLENGES[TemplateId.SUCCESS_VALIDATION], "test_source": flattened})
+    )
+    assert proposal.test_source == source
+    assert validate_test_source(proposal.test_source).test_count == 1
+
+
+def test_ambiguous_flattened_source_is_rejected_not_guessed() -> None:
+    # An intended "\\n" inside a string cannot be told apart once flattened; the restored
+    # source no longer parses and static validation rejects it rather than running it.
+    flattened = 'def test_x() -> None:\\n    assert "abc\\n"\\n'
+    proposal = parse_proposal(
+        json.dumps({**SCRIPTED_CHALLENGES[TemplateId.SUCCESS_VALIDATION], "test_source": flattened})
+    )
+    with pytest.raises(ChallengeRejectedError):
+        validate_test_source(proposal.test_source)
+
+
+def test_source_with_real_newlines_is_never_rewritten() -> None:
+    source = 'def test_x():\n    assert "a\\nb".count("\\n") == 1\n'
+    text = json.dumps({**SCRIPTED_CHALLENGES[TemplateId.SUCCESS_VALIDATION], "test_source": source})
+    assert parse_proposal(text).test_source == source
+
+
+def test_double_escaped_source_still_faces_static_validation() -> None:
+    hostile = {
+        **SCRIPTED_CHALLENGES[TemplateId.SUCCESS_VALIDATION],
+        "test_source": "import os\n\ndef test_x():\n    os.system('id')\n",
+    }
+    with pytest.raises(ChallengeRejectedError):
+        validate_test_source(parse_proposal(_double_escaped(hostile)).test_source)
+
+
 BENIGN = (
     "from src.auth import bearer_header\n\n\ndef test_x() -> None:\n    assert bearer_header('a')\n"
 )

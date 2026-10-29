@@ -63,3 +63,9 @@ def test_blank_verifier_pin_is_unpinned_but_malformed_pin_is_rejected(make_setti
     assert make_settings(VERIFIER_IMAGE_ID="").verifier_image_id is None
     with pytest.raises(ValidationError, match="VERIFIER_IMAGE_ID"):
         make_settings(VERIFIER_IMAGE_ID="sha256:not-a-digest")
+
+
+def test_unenforced_live_is_off_by_default_and_refused_in_production(make_settings) -> None:
+    assert make_settings().allow_unenforced_live is False
+    with pytest.raises(ValidationError, match="not allowed in production"):
+        make_settings(PROOFLAYER_ENV="production", PROOFLAYER_ALLOW_UNENFORCED_LIVE=True)

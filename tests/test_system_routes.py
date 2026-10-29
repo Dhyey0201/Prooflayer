@@ -39,6 +39,7 @@ def test_capabilities_never_claim_sandbox_enforcement(client: TestClient) -> Non
     body = client.get("/api/v1/capabilities").json()
     assert body["openshell_available"] is False
     assert body["sandbox_enforced"] is False
+    assert body["unenforced_live_allowed"] is False
     assert body["independent_verifier_available"] is False
 
 
