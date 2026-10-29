@@ -17,8 +17,10 @@ describe("Sidebar navigation", () => {
 
     const dashboardLink = screen.getByRole("link", { name: "Dashboard" });
     const runsLink = screen.getByRole("link", { name: "Runs" });
+    const benchmarkLink = screen.getByRole("link", { name: "Benchmark" });
     expect(dashboardLink).toHaveAttribute("aria-current", "page");
     expect(runsLink).not.toHaveAttribute("aria-current");
+    expect(benchmarkLink).not.toHaveAttribute("aria-current");
   });
 
   it("is reachable via keyboard Tab order", async () => {
@@ -30,5 +32,8 @@ describe("Sidebar navigation", () => {
 
     await user.tab();
     expect(screen.getByRole("link", { name: "Runs" })).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole("link", { name: "Benchmark" })).toHaveFocus();
   });
 });

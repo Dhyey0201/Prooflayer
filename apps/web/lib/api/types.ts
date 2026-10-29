@@ -247,3 +247,23 @@ export interface Challenge {
 
 /** Statuses a challenge can still move through; mirrors `challenges.ACTIVE`. */
 export const ACTIVE_CHALLENGE_STATUSES: readonly ChallengeStatus[] = ["queued", "running"];
+
+/**
+ * Provisional shape for the deterministic benchmark harness (Commit 13,
+ * backend, not yet merged — see docs/04_TEST_EVALUATION.md "Metrics and
+ * formulas"). No endpoint serves this yet, so nothing in the frontend
+ * constructs one of these; it exists so the eventual rendering code has a
+ * type to build against instead of `any`. Reconcile field names with
+ * whatever Dhyey's CLI actually emits before wiring up `/benchmark`.
+ */
+export interface BenchmarkReport {
+  generated_at: string;
+  seed_count: number;
+  detection_recall: number;
+  false_positive_rate: number;
+  claim_mismatch_recall: number;
+  verdict_accuracy: number;
+  verification_overhead_ms_median: number;
+  verification_overhead_ms_p95: number;
+  integrity_detection_rate: number;
+}
