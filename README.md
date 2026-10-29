@@ -97,12 +97,26 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/runs/<id>/challenge   # proof chall
 make verify-certificate RUN=<id>   # offline check against events + detached ledger
 ```
 
+Seeded benchmark (needs Docker and `make verifier-image`):
+
+```bash
+make benchmark        # 18 seeded cases x 3 passes -> benchmarks/results/benchmark-report.json
+make secret-scan      # credential patterns + exported secret values, tracked files and history
+```
+
+Each case is a real run through the orchestrator, the network-less verifier and the
+certificate path, driven by a fixed model script with ground truth fixed in
+`benchmarks/benchmark_manifest.json`; the CLI exits non-zero unless every case meets it,
+the passes agree and no secret appears in any stored evidence. Results, metric
+definitions and what they do **not** show: `docs/07_BENCHMARK_LIMITATIONS.md`.
+
 A new run is queued and the background worker executes it: provision a sandbox,
 run the bounded agent (scripted in `fixture` mode, Nemotron in `live` mode), snapshot
 its workspace, release the sandbox, record the agent's claim. Then the **independent
 verifier** grades it: each `required_check` maps to a pinned template
 (`verifier/checks.py`). The full pytest suite runs in a fresh container (`--network none`,
-read-only root, all capabilities dropped, non-root UID 10002, CPU/memory/PID/time caps,
+read-only root, all capabilities dropped, non-root UID 10002, no IPC namespace,
+CPU/memory/PID/file-descriptor/file-size/time caps,
 workspace streamed in on stdin, no host mounts) on a tree rebuilt from the
 digest-pinned fixture baseline plus only the agent's allowed files; the allowlist diff and
 forbidden-access attempts are measured from the snapshot and the recorded events. Any
@@ -190,7 +204,7 @@ original certificate check). See `apps/web/README.md` for scripts (`lint`,
 1. `docs/01_PRODUCT_PRD.md` — goals, UX, stories and success criteria.
 2. `docs/02_ARCHITECTURE_SECURITY.md` — data flow and trust model.
 3. `docs/03_SEVEN_DAY_COMMIT_PLAN.md` — exact ownership and alternating integration protocol.
-4. `docs/04_TEST_EVALUATION.md` — benchmark and acceptance.
+4. `docs/04_TEST_EVALUATION.md` — benchmark and acceptance; measured results in `docs/07_BENCHMARK_LIMITATIONS.md`.
 5. `docs/05_SETUP_COST_DEPLOYMENT.md` — setup, cost limits, deployment.
 6. `docs/06_DEMO_SUBMISSION.md` — judged demo, copy and final checklist.
 7. `contracts/openapi.yaml`, `contracts/schemas.json` — contract-first interfaces.
@@ -202,7 +216,7 @@ original certificate check). See `apps/web/README.md` for scripts (`lint`,
 - The hash chain and manifest are tamper **evidence**, not tamper **prevention**: they detect an altered log or a rewritten database, but nothing is signed, so this is not non-repudiable against someone who controls both the live database and the detached ledger.
 - The independent verifier must be independently provisioned (a working Docker daemon, or OpenShell for the agent side) — without it, every executed check reports INCONCLUSIVE rather than a fabricated result.
 - Model-generated proof-challenge tests are useful but still require a secure runner (never executed outside the verifier) and a clear, narrow definition of what they're checking; static AST validation rejects obviously dangerous code but is explicitly documented as *not* a security boundary on its own — the verifier's container isolation is.
-- The benchmark harness (quantified detection recall, false-positive rate, overhead) is Commit 13 and had not merged as of this README's last update; see `docs/PROGRESS_LOG.md` for current status before citing any number from this project as measured.
+- The benchmark measures the verification layer against 18 synthetic, scripted cases (not a live model, and with the mock agent sandbox); its numbers are exact for that set only. One seeded violation (code-level network exfiltration) is contained by the verifier but not flagged by any evidence signal. See `docs/07_BENCHMARK_LIMITATIONS.md` before citing a number.
 
 ## Principle: one trunk, one active writer
 The initial seven-day plan alternates commits: Dhyey pushes, Ancy pulls and extends, Ancy pushes, Dhyey pulls and extends. For simplicity, use a protected `main` with a single active feature branch at a time and review PRs. **Never both modify the same local unpushed branch simultaneously.** No force-push, no committing credentials.

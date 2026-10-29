@@ -48,10 +48,13 @@ jobs:
       - name: Handoff package check
         run: python scripts/check_docs.py
 
+      - name: Secret scan (tracked files)
+        run: python scripts/secret_scan.py
+
   verifier:
     name: Independent verifier (real containers)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       PROOFLAYER_MOCK_MODE: "true"
       RUN_LIVE_INTEGRATION: "0"
@@ -74,3 +77,17 @@ jobs:
 
       - name: Real-container verifier tests
         run: RUN_DOCKER_VERIFIER=1 pytest -q -rs tests/test_docker_verifier.py
+
+      # Fails unless every seeded case meets its ground truth, three passes agree
+      # and the evidence secret scan is clean.
+      - name: Seeded benchmark (3 consecutive passes)
+        working-directory: apps/api
+        run: python -m prooflayer_api.bench --passes 3 --out ../../benchmark-report.json
+
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report
+          path: benchmark-report.json
+          if-no-files-found: ignore

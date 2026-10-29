@@ -90,6 +90,10 @@ def test_run_is_isolated_and_pinned_by_image_id() -> None:
     assert pairs["--cpus"] == "0.5"
     assert pairs["--pids-limit"] == "64"
     assert "--read-only" in argv
+    assert pairs["--ipc"] == "none"
+    assert pairs["--log-driver"] == "none"
+    ulimits = {argv[i + 1] for i, a in enumerate(argv) if a == "--ulimit"}
+    assert ulimits == {"core=0", "nofile=256:256", f"fsize={16 * 1024 * 1024}"}
     assert argv[-2:] == [IMAGE_ID, "tests"]
     # No host directory, socket or privilege ever reaches the container.
     for forbidden in ("-v", "--volume", "--mount", "--privileged", "--network=host"):
@@ -190,6 +194,7 @@ def test_real_scripted_challenges(docker_verifier, template, outcome) -> None:
 # container boundary itself, which must hold even if validation is bypassed.
 ISOLATION_PROBE = b"""
 import os
+import resource
 import socket
 
 import pytest
@@ -208,6 +213,12 @@ def test_root_filesystem_is_read_only() -> None:
 def test_runs_as_unprivileged_verifier_user() -> None:
     assert os.getuid() == 10002
     assert os.getgid() == 10002
+
+
+def test_resource_limits_apply_inside_the_container() -> None:
+    assert resource.getrlimit(resource.RLIMIT_NOFILE) == (256, 256)
+    assert resource.getrlimit(resource.RLIMIT_CORE) == (0, 0)
+    assert resource.getrlimit(resource.RLIMIT_FSIZE)[0] == 16 * 1024 * 1024
 
 
 def test_no_secrets_or_agent_sandbox_paths() -> None:

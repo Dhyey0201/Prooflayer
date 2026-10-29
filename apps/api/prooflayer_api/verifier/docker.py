@@ -4,7 +4,8 @@ Each check runs in a fresh container from the pinned verifier image, started
 *by image ID* so the exact image is part of the evidence. The container has no
 network, a read-only root filesystem, every Linux capability dropped,
 ``no-new-privileges``, a non-root UID distinct from the agent sandbox's and
-CPU / memory / PID limits. The workspace is streamed in as a tar on stdin and
+CPU / memory / PID / file-descriptor / file-size limits, no IPC namespace and
+no engine-side log copy. The workspace is streamed in as a tar on stdin and
 extracted into tmpfs: no host directory is mounted and the Docker socket is
 never exposed. Commands are argv lists; nothing is parsed by a shell.
 
@@ -25,6 +26,9 @@ from .snapshot import build_archive
 
 VERIFIER_UID = "10002"
 CLI_TIMEOUT_SECONDS = 30.0
+NOFILE_LIMIT = 256
+# Largest single file the verifier may write (the tmpfs mount is 32 MiB).
+FSIZE_LIMIT_BYTES = 16 * 1024 * 1024
 _IMAGE_ID = re.compile(r"^sha256:[0-9a-f]{64}$")
 # Exit codes produced by Docker itself rather than by the command it ran.
 DOCKER_ERROR_CODES = frozenset({125, 126, 127})
@@ -105,6 +109,18 @@ class DockerVerifierDriver:
             "ALL",
             "--security-opt",
             "no-new-privileges",
+            # No shared IPC namespace, no core dumps, bounded descriptors and
+            # file sizes; output is captured from stdio, not kept in engine logs.
+            "--ipc",
+            "none",
+            "--ulimit",
+            "core=0",
+            "--ulimit",
+            f"nofile={NOFILE_LIMIT}:{NOFILE_LIMIT}",
+            "--ulimit",
+            f"fsize={FSIZE_LIMIT_BYTES}",
+            "--log-driver",
+            "none",
             "--pids-limit",
             str(self._pids),
             "--memory",

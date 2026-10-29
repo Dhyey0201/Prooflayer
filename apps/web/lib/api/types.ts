@@ -117,6 +117,7 @@ export type ErrorCode =
   | "not_found"
   | "method_not_allowed"
   | "conflict"
+  | "payload_too_large"
   | "rate_limited"
   | "internal_error"
   // Client-side only: the request never reached the backend's error envelope.

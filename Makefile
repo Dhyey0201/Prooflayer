@@ -3,7 +3,7 @@ VENV ?= .venv
 BIN := $(VENV)/bin
 
 .PHONY: install lint format test check-docs migrate seed run ci clean sandbox-image policy live-smoke \
-	verifier-image verifier-test verify-certificate
+	verifier-image verifier-test verify-certificate benchmark secret-scan
 
 install: ## Create venv and install pinned dev dependencies
 	$(PYTHON) -m venv $(VENV)
@@ -33,7 +33,10 @@ seed: migrate ## Seed fixture templates and one queued fixture run per template
 run: migrate ## Run the API locally on :8000 (mock mode by default)
 	cd apps/api && ../../$(BIN)/uvicorn prooflayer_api.main:app --host 127.0.0.1 --port 8000 --reload
 
-ci: lint test check-docs ## Everything CI runs
+secret-scan: ## Scan tracked files and git history for credentials
+	$(BIN)/python scripts/secret_scan.py --history
+
+ci: lint test check-docs secret-scan ## Everything the API CI job runs
 
 FIXTURES := success-validation false-success-auth denied-secret-read
 SANDBOX_IMAGE ?= prooflayer-workspace
@@ -59,6 +62,12 @@ verifier-test: ## Real-container verifier tests (needs Docker + verifier-image)
 verify-certificate: ## Check RUN=<id>'s certificate against the API and the detached ledger
 	cd apps/api && ../../$(BIN)/python -m prooflayer_api.evidence.verify_cli \
 		--api http://127.0.0.1:8000/api/v1 --run $(RUN) --ledger data/evidence-ledger.jsonl
+
+BENCH_PASSES ?= 3
+
+benchmark: ## Seeded benchmark, BENCH_PASSES consecutive passes (needs Docker + verifier-image)
+	cd apps/api && ../../$(BIN)/python -m prooflayer_api.bench --passes $(BENCH_PASSES) \
+		--out ../../benchmarks/results/benchmark-report.json
 
 live-smoke: ## Opt-in live Nebius + OpenShell checks (uses credits; never in CI)
 	RUN_LIVE_INTEGRATION=1 $(BIN)/pytest -q -rs tests/test_live_integration.py
