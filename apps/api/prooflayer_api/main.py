@@ -13,6 +13,7 @@ from . import __version__
 from .config import Settings, get_settings
 from .db.session import make_engine, make_session_factory
 from .errors import UnhandledErrorMiddleware, register_error_handlers
+from .hardening import BodySizeLimitMiddleware, SecurityHeadersMiddleware
 from .request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 from .routes import runs, system
 from .services.fixtures import seed_templates
@@ -70,9 +71,11 @@ def create_app(settings: Settings | None = None, runtime: Runtime | None = None)
     app.dependency_overrides.update(overrides)
 
     register_error_handlers(app)
-    # Middleware added later wraps earlier ones: RequestId is outermost so the
-    # typed 500 from UnhandledErrorMiddleware still carries the request ID.
+    # Middleware added later wraps earlier ones: RequestId wraps everything but
+    # the security headers, so typed 413/500 envelopes still carry the request
+    # ID; the body cap sits inside CORS so a 413 is readable by the browser.
     app.add_middleware(UnhandledErrorMiddleware)
+    app.add_middleware(BodySizeLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -82,6 +85,7 @@ def create_app(settings: Settings | None = None, runtime: Runtime | None = None)
         expose_headers=[REQUEST_ID_HEADER, "Idempotent-Replayed"],
     )
     app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     app.include_router(system.router, prefix=API_PREFIX)
     app.include_router(runs.router, prefix=API_PREFIX)

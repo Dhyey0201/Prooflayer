@@ -87,5 +87,6 @@ class ErrorCode(StrEnum):
     NOT_FOUND = "not_found"
     METHOD_NOT_ALLOWED = "method_not_allowed"
     CONFLICT = "conflict"
+    PAYLOAD_TOO_LARGE = "payload_too_large"
     RATE_LIMITED = "rate_limited"
     INTERNAL_ERROR = "internal_error"

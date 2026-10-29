@@ -40,6 +40,7 @@ paths:
       responses:
         '201': {description: Created (or idempotent replay), content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
         '409': {description: Idempotency-Key reused with a different body, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '413': {description: Request body over 64 KiB (any endpoint), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
         '422': {description: Invalid fixture / settings, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
         '429': {description: Too many pending runs, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   /runs/{run_id}:
@@ -136,7 +137,7 @@ components:
           type: object
           required: [code, message, request_id]
           properties:
-            code: {type: string, enum: [bad_request, validation_error, not_found, method_not_allowed, conflict, rate_limited, internal_error]}
+            code: {type: string, enum: [bad_request, validation_error, not_found, method_not_allowed, conflict, payload_too_large, rate_limited, internal_error]}
             message: {type: string}
             request_id: {type: [string, 'null']}
     RunCreate:
