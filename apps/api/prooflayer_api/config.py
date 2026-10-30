@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_NEBIUS_BASE_URL = "https://api.tokenfactory.us-central1.nebius.com/v1/"
@@ -114,6 +114,12 @@ class Settings(BaseSettings):
         default=12, ge=1, le=100, alias="PROOFLAYER_MAX_MODEL_CALLS_PER_RUN"
     )
     max_agent_steps: int = Field(default=8, ge=1, le=50, alias="PROOFLAYER_MAX_AGENT_STEPS")
+
+    @field_validator("verifier_image_id", mode="before")
+    @classmethod
+    def _blank_pin_means_unpinned(cls, value: object) -> object:
+        # `.env.example` ships `VERIFIER_IMAGE_ID=`; an empty value is no pin, not a bad one.
+        return None if isinstance(value, str) and not value.strip() else value
 
     @model_validator(mode="after")
     def _require_key_outside_mock_mode(self) -> Settings:
