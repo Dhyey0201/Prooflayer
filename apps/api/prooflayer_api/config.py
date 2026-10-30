@@ -8,11 +8,21 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_NEBIUS_BASE_URL = "https://api.tokenfactory.us-central1.nebius.com/v1/"
+# Reference report committed by `make benchmark`, in a repo checkout. Packaged
+# installs (the API image) have no repo root above the package: no default there,
+# so GET /benchmark is a 404 unless PROOFLAYER_BENCHMARK_REPORT is set.
+_PACKAGE_PARENTS = Path(__file__).resolve().parents
+DEFAULT_BENCHMARK_REPORT = (
+    str(_PACKAGE_PARENTS[3] / "benchmarks" / "results" / "benchmark-report.json")
+    if len(_PACKAGE_PARENTS) > 3
+    else ""
+)
 
 
 class SandboxDriverName(StrEnum):
@@ -92,10 +102,17 @@ class Settings(BaseSettings):
     # when no enforcing runtime exists on this host. Off by default, refused in production;
     # every such run records enforced=false and its certificate says so.
     allow_unenforced_live: bool = Field(default=False, alias="PROOFLAYER_ALLOW_UNENFORCED_LIVE")
+    # Served read-only by GET /benchmark; a missing file is a typed 404, never a placeholder.
+    benchmark_report_path: str = Field(
+        default=DEFAULT_BENCHMARK_REPORT, alias="PROOFLAYER_BENCHMARK_REPORT"
+    )
     max_challenges_per_run: int = Field(
         default=3, ge=0, le=20, alias="PROOFLAYER_MAX_CHALLENGES_PER_RUN"
     )
 
+    # Hosted replay: every write is refused with a typed 403 and no worker runs, so the
+    # deployment only serves recorded evidence (docs/08_HOSTED_DEMO.md).
+    read_only: bool = Field(default=False, alias="PROOFLAYER_READ_ONLY")
     # Background worker that advances queued runs; tests turn it off.
     worker_enabled: bool = Field(default=True, alias="PROOFLAYER_WORKER_ENABLED")
     worker_poll_seconds: float = Field(

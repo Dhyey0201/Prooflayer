@@ -43,6 +43,7 @@ def test_verdicts_match_contract() -> None:
 IMPLEMENTED = {
     ("/health", "get"),
     ("/capabilities", "get"),
+    ("/benchmark", "get"),
     ("/templates", "get"),
     ("/runs", "get"),
     ("/runs", "post"),

@@ -22,6 +22,7 @@ logger = logging.getLogger("prooflayer.api")
 
 _STATUS_TO_CODE = {
     400: ErrorCode.BAD_REQUEST,
+    403: ErrorCode.READ_ONLY,
     404: ErrorCode.NOT_FOUND,
     405: ErrorCode.METHOD_NOT_ALLOWED,
     409: ErrorCode.CONFLICT,

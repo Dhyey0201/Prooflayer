@@ -112,6 +112,56 @@ evidence chain is only as honest as the UI built on top of it: it's easy to
 accidentally render a hopeful default instead of an explicit "we don't know
 yet."
 
+## Feedback on Nebius Token Factory and NVIDIA tools
+
+Everything here is from what actually happened while building ProofLayer.
+
+**Nebius Token Factory**
+- Worked on the first try. The OpenAI-compatible endpoint let us reuse the
+  standard `openai` Python SDK with only a base URL and key, and an
+  authenticated `GET /v1/models` was a free, reliable way to check the key
+  and the model ID before spending anything.
+- `response_format={"type": "json_object"}` with `temperature=0` gave us
+  parseable JSON on all 20 live agent calls.
+- Cheap enough to iterate on: three full live runs, eight proof-challenge
+  attempts and the smoke tests together cost well under $1 of credit.
+- Wish list: say on the model page that reasoning tokens count toward
+  `max_tokens`, and list the regional endpoint
+  (`api.tokenfactory.us-central1.nebius.com`) next to the global one, since
+  both answered but they listed different numbers of models (18 vs 30).
+
+**NVIDIA Nemotron (`nvidia/nemotron-3-super-120b-a12b`)**
+- Strong at the task itself: it really fixed both seeded bugs, including the
+  one our scripted agent is written to lie about, and it stayed within our
+  typed action schema with no malformed agent actions.
+- Two quirks that broke our parser before we handled them:
+  (1) its reasoning tokens count toward `max_tokens`, so at our original
+  1,024 cap one challenge reply was cut off mid-JSON
+  (`finish_reason=length`); (2) it sometimes JSON-escapes code inside a
+  JSON string a second time, so the test arrives as one line of literal
+  `\n`. Both are now handled, and the affected replies were rejected and
+  never executed.
+- As a test author it can be confidently wrong: one generated challenge
+  asserted the opposite of the fixture's documented expiry rule. That is
+  exactly why our challenges are measured, not trusted.
+
+**NVIDIA OpenShell (0.1.5)**
+- Good design for this use case: deny-by-default policies, mTLS between CLI
+  and gateway, and a clear refusal when it cannot enforce rather than a
+  silent downgrade. Its error messages pointed straight at each problem.
+- On macOS we could not get an enforced sandbox:
+  (1) the installer's Homebrew path stopped on outdated Command Line Tools,
+  so we installed the published release binaries (checksums verified)
+  instead; (2) the Docker driver defaulted to host networking with a
+  `127.0.0.1` callback, which is unreachable from containers on Docker
+  Desktop (setting `supervisor_network_mode = "bridge"` fixed it);
+  (3) Docker Desktop's Linux kernel has no Landlock, so every sandbox was
+  refused (`kernel lacks CONFIG_SECURITY_LANDLOCK`).
+- Wish list: a macOS quickstart that says up front that Docker Desktop
+  cannot provide Landlock and points to the MicroVM driver or a Linux host,
+  and a `config preflight` check that warns about host networking on
+  Docker Desktop.
+
 ## What's next
 
 GitHub PR/CI integration (verify a PR's own claims before merge), workflow

@@ -14,6 +14,10 @@ required = [
     "docs/07_BENCHMARK_LIMITATIONS.md",
     "benchmarks/benchmark_manifest.json",
     "benchmarks/results/benchmark-report.json",
+    "docs/08_HOSTED_DEMO.md",
+    "demo/Dockerfile",
+    "demo/prooflayer-demo.db",
+    "demo/evidence-ledger.jsonl",
 ]
 for relative in required:
     assert (root / relative).exists(), relative

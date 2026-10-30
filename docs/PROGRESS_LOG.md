@@ -295,7 +295,7 @@ Human and coding agents append one block per merged commit:
 - Security / model cost: three Nemotron calls at most (budgets 64 and 8,000 tokens); a few cents of the team's Nebius credit. The key lives only in the developer's `.env` (git-ignored, mode 600); it is never printed or committed.
 - Known blockers: a full `mode: "live"` run still returns 422 by design until an OpenShell sandbox is reachable — the live model is proven, the enforced sandbox is not. Installing the OpenShell CLI/gateway needs owner approval (system software).
 
-## 2026-10-29 — Live Nemotron runs (unenforced fallback) + live-found fixes — SHA: see PR (branch `feature/d7-dhyey-live-model-unenforced`) — Dhyey
+## 2026-10-29 — Live Nemotron runs (unenforced fallback) + live-found fixes — SHA `2dc0405` (merged via PR #11, `fac0ef8`) — Dhyey
 - Files/feature:
   - `PROOFLAYER_ALLOW_UNENFORCED_LIVE` (default false, refused when `PROOFLAYER_ENV=production`): the docs/03 fallback when OpenShell cannot run. `mode: "live"` is then accepted with the mock sandbox (`runtime.live_runtime_available`, orchestrator gate). Every such run records `enforced: false`, its certificate lists the mock sandbox as a limitation, and enforcement-dependent checks stay INCONCLUSIVE. New capability `unenforced_live_allowed` (`routes/system.py`, `contracts/openapi.yaml`, `apps/web/lib/api/types.ts`, status panel label).
   - `ai/client.py`: `MAX_COMPLETION_TOKENS` 1024 → 4096. Nemotron 3 Super's reasoning tokens count toward it, and a live challenge reply was cut off mid-JSON (`finish_reason=length`, reproduced in 1 of 3 direct calls). Per-run token budgets still cap the total.
@@ -311,3 +311,22 @@ Human and coding agents append one block per merged commit:
   - **OpenShell (not a pass):** OpenShell 0.1.5 installed from NVIDIA release binaries (Homebrew blocked by outdated Command Line Tools); gateway Connected over mTLS; `make sandbox-image` → 3 images. `RUN_LIVE_INTEGRATION=1 pytest -k openshell` → **1 failed** (`sandbox_create_failed`). Cause: `Landlock ABI v3 or newer (Linux 6.2+) is required, but Landlock is not implemented (kernel lacks CONFIG_SECURITY_LANDLOCK)` on Docker Desktop kernel `6.12.54-linuxkit`. A host-networking callback issue on Docker Desktop was fixed first via gateway config (`supervisor_network_mode = "bridge"`).
 - Security / model cost: about 19,200 agent tokens plus about 10 challenge calls and 3 diagnostic calls. Well under $1 of the team's $20 Nebius credit. Key only in the git-ignored `.env`.
 - Known blockers: enforced agent sandbox needs a Linux host with Landlock. Hosted demo, video and the `v0.1.0-demo` tag are still pending (human).
+
+## 2026-10-30 — Submission readiness: tool feedback, /benchmark page, hosted read-only replay — SHA: see PR (branch `feature/d7-dhyey-submission-readiness`) — Dhyey
+- Three commits, one PR. The deadline is too close to wait for a merge between each, and the team rule is no new PR while another is open.
+  1. `docs/DEVPOST.md`: required feedback on Nebius Token Factory, Nemotron and OpenShell, every point from this build.
+  2. `GET /api/v1/benchmark` serves the published report (`PROOFLAYER_BENCHMARK_REPORT`; missing or corrupt file → typed 404). The `/benchmark` page renders every ratio with numerator/denominator and shows a null ratio as "n/a", plus mismatched cases, determinism, environment and limitations. An API error stays an error, never placeholder numbers. This was Ancy's page; done at the owner's request before the deadline.
+  3. Hosted replay:
+     - `PROOFLAYER_READ_ONLY` (`ReadOnlyMiddleware`: every non-GET → typed `403 read_only`, readable cross-origin; no worker). New capability `read_only`, a web "Replay" banner, and the contract plus web types.
+     - `demo/Dockerfile` with an allow-list `.dockerignore`, so `.env` cannot enter the image.
+     - `demo/prooflayer-demo.db` and `demo/evidence-ledger.jsonl`: an SQLite-backup snapshot of 8 real runs (3 live Nemotron, 5 scripted, all checked by the real verifier). `!demo/prooflayer-demo.db` is an explicit `.gitignore` exception.
+     - `docs/08_HOSTED_DEMO.md` (lock-down, local preview, Render + Vercel steps, regeneration).
+  - `docs/06` storyboard no longer calls the secret-read beat an OpenShell denial.
+- Bug found while building the image: the new benchmark-path default indexed `parents[3]`, which raised `IndexError` when `config.py` sits at `/app/prooflayer_api/` (both API images crashed on boot). Packaged installs now default to no report (404); a test covers the empty path.
+- Exact commands/tests run + PASS/FAIL:
+  - `ruff check .`, `ruff format --check .` → PASS. `pytest -q` → PASS (count in the PR). Web `npm run lint`, `npm run typecheck` → PASS; `vitest run` → 53 passed. `npm run build` → PASS. `scripts/check_docs.py` → PASS.
+  - `docker build -f demo/Dockerfile .` → image contains no `.env`; runs as UID 10001. Run with `--read-only --cap-drop ALL`: capabilities `read_only:true`, `/runs` lists 8, `/benchmark` 200, `POST /runs` → 403 `read_only`. `verify_cli --api <container> --ledger demo/evidence-ledger.jsonl` → exit 0 for all 8 runs.
+  - The plain API image (`apps/api`) boots settings after the fix (benchmark path `''`).
+  - Secret scan with the real key over the demo DB and ledger → 0 matches; no local paths or emails in them.
+- Security / model cost: $0 new model spend (scripted runs only). The hosted image has no key, never calls a model or Docker, and refuses writes.
+- Known blockers: deploying needs the owner's Render/Vercel (or similar) accounts. The video, screenshots, Devpost links, the `v0.1.0-demo` tag and the Devpost form remain human tasks.

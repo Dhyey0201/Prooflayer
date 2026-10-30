@@ -10,6 +10,7 @@ const CAPABILITY_LABELS: Record<string, string> = {
   openshell_available: "OpenShell available",
   sandbox_enforced: "Sandbox enforced",
   unenforced_live_allowed: "Live runs without enforcement",
+  read_only: "Read-only replay",
   independent_verifier_available: "Independent verifier",
   tavily_enabled: "Tavily retrieval",
 };

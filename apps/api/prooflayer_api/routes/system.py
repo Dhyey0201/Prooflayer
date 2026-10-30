@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 from ..config import Settings, get_settings
+from ..enums import ErrorCode
+from ..errors import ApiError
 from ..services.runtime import (
     SandboxStatusCache,
     VerifierStatusCache,
@@ -37,6 +42,8 @@ class CapabilitiesResponse(BaseModel):
     sandbox_enforced: bool
     # Live runs may use the unenforced mock sandbox (development fallback, opt-in).
     unenforced_live_allowed: bool
+    # Hosted replay: writes are refused and no runs execute.
+    read_only: bool
     # The verifier runtime answers and its pinned image is present.
     independent_verifier_available: bool
     tavily_enabled: bool
@@ -78,6 +85,7 @@ def build_capabilities(
         openshell_available=enforced,
         sandbox_enforced=enforced,
         unenforced_live_allowed=settings.allow_unenforced_live,
+        read_only=settings.read_only,
         independent_verifier_available=verifier.get().available if verifier else False,
         tavily_enabled=settings.tavily_configured,
     )
@@ -93,3 +101,16 @@ def get_capabilities(
     settings: SettingsDep, sandbox: SandboxStatusDep, verifier: VerifierStatusDep
 ) -> CapabilitiesResponse:
     return build_capabilities(settings, sandbox, verifier)
+
+
+@router.get("/benchmark", operation_id="getBenchmarkReport")
+def get_benchmark_report(settings: SettingsDep) -> JSONResponse:
+    """The published benchmark report, exactly as `make benchmark` wrote it."""
+    path = Path(settings.benchmark_report_path)
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise ApiError(404, ErrorCode.NOT_FOUND, "No benchmark report has been published") from None
+    if not isinstance(report, dict):
+        raise ApiError(404, ErrorCode.NOT_FOUND, "No benchmark report has been published")
+    return JSONResponse(report)

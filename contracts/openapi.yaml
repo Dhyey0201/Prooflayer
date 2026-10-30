@@ -16,6 +16,12 @@ paths:
       operationId: getCapabilities
       responses:
         '200': {description: Environment capabilities and only boolean availability, content: {application/json: {schema: {$ref: '#/components/schemas/Capabilities'}}}}
+  /benchmark:
+    get:
+      operationId: getBenchmarkReport
+      responses:
+        '200': {description: The published benchmark report (written by `make benchmark`; read-only), content: {application/json: {schema: {$ref: '#/components/schemas/BenchmarkReport'}}}}
+        '404': {description: No report has been published, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   /templates:
     get:
       operationId: listTemplates
@@ -107,7 +113,7 @@ components:
     Capabilities:
       type: object
       additionalProperties: false
-      required: [mock_mode, nebius_configured, live_model_enabled, openshell_available, sandbox_enforced, unenforced_live_allowed, independent_verifier_available, tavily_enabled]
+      required: [mock_mode, nebius_configured, live_model_enabled, openshell_available, sandbox_enforced, unenforced_live_allowed, read_only, independent_verifier_available, tavily_enabled]
       properties:
         mock_mode: {type: boolean}
         nebius_configured: {type: boolean}
@@ -115,8 +121,23 @@ components:
         openshell_available: {type: boolean, description: "SANDBOX_DRIVER=openshell and the CLI + gateway respond"}
         sandbox_enforced: {type: boolean, description: "Runs execute under OpenShell; each sandbox's Landlock enforcement is re-confirmed at provisioning"}
         unenforced_live_allowed: {type: boolean, description: "PROOFLAYER_ALLOW_UNENFORCED_LIVE: live-model runs may use the unenforced mock sandbox (development fallback; never in production)"}
+        read_only: {type: boolean, description: "PROOFLAYER_READ_ONLY: hosted replay; every write returns 403 read_only and no runs execute"}
         independent_verifier_available: {type: boolean, description: "VERIFIER_DRIVER=docker, the engine answers and the pinned verifier image is present"}
         tavily_enabled: {type: boolean}
+    BenchmarkReport:
+      type: object
+      description: Flat headline fields; `metrics` carries each ratio with numerator, denominator and definition. A ratio is null when its denominator is 0.
+      required: [schema_version, generated_at, seed_count, passes, metrics, deterministic, all_expectations_met, environment, limitations]
+      properties:
+        schema_version: {type: string}
+        generated_at: {type: string, format: date-time}
+        seed_count: {type: integer}
+        passes: {type: integer}
+        deterministic: {type: boolean}
+        all_expectations_met: {type: boolean}
+        metrics: {type: object, additionalProperties: {type: object, properties: {value: {type: [number, 'null']}, numerator: {type: integer}, denominator: {type: integer}, definition: {type: string}}}}
+        environment: {type: object}
+        limitations: {type: array, items: {type: string}}
     Template:
       type: object
       required: [id, title, description, allowed_paths, read_denied_paths, required_checks, policy_version, repo_sha, expected_verdict]
@@ -138,7 +159,7 @@ components:
           type: object
           required: [code, message, request_id]
           properties:
-            code: {type: string, enum: [bad_request, validation_error, not_found, method_not_allowed, conflict, payload_too_large, rate_limited, internal_error]}
+            code: {type: string, enum: [bad_request, validation_error, read_only, not_found, method_not_allowed, conflict, payload_too_large, rate_limited, internal_error]}
             message: {type: string}
             request_id: {type: [string, 'null']}
     RunCreate:

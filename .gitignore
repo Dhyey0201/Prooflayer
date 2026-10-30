@@ -35,3 +35,6 @@ out/
 .idea/
 .vscode/
 *.swp
+
+# Recorded evidence for the hosted read-only replay (docs/08_HOSTED_DEMO.md)
+!demo/prooflayer-demo.db
