@@ -8,11 +8,16 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_NEBIUS_BASE_URL = "https://api.tokenfactory.us-central1.nebius.com/v1/"
+# Reference report committed by `make benchmark` (repo checkout layout).
+DEFAULT_BENCHMARK_REPORT = str(
+    Path(__file__).resolve().parents[3] / "benchmarks" / "results" / "benchmark-report.json"
+)
 
 
 class SandboxDriverName(StrEnum):
@@ -92,6 +97,10 @@ class Settings(BaseSettings):
     # when no enforcing runtime exists on this host. Off by default, refused in production;
     # every such run records enforced=false and its certificate says so.
     allow_unenforced_live: bool = Field(default=False, alias="PROOFLAYER_ALLOW_UNENFORCED_LIVE")
+    # Served read-only by GET /benchmark; a missing file is a typed 404, never a placeholder.
+    benchmark_report_path: str = Field(
+        default=DEFAULT_BENCHMARK_REPORT, alias="PROOFLAYER_BENCHMARK_REPORT"
+    )
     max_challenges_per_run: int = Field(
         default=3, ge=0, le=20, alias="PROOFLAYER_MAX_CHALLENGES_PER_RUN"
     )

@@ -251,22 +251,40 @@ export interface Challenge {
 /** Statuses a challenge can still move through; mirrors `challenges.ACTIVE`. */
 export const ACTIVE_CHALLENGE_STATUSES: readonly ChallengeStatus[] = ["queued", "running"];
 
+/** One ratio from the benchmark report; `value` is null when `denominator` is 0. */
+export interface BenchmarkRatio {
+  value: number | null;
+  numerator: number;
+  denominator: number;
+  definition: string;
+}
+
 /**
- * Provisional shape for the deterministic benchmark harness (Commit 13,
- * backend, not yet merged — see docs/04_TEST_EVALUATION.md "Metrics and
- * formulas"). No endpoint serves this yet, so nothing in the frontend
- * constructs one of these; it exists so the eventual rendering code has a
- * type to build against instead of `any`. Reconcile field names with
- * whatever Dhyey's CLI actually emits before wiring up `/benchmark`.
+ * `GET /benchmark`: the report `make benchmark` publishes
+ * (`benchmarks/results/benchmark-report.json`). Only the fields the
+ * benchmark page renders are typed; the rest is passed through untouched.
  */
 export interface BenchmarkReport {
+  schema_version: string;
   generated_at: string;
   seed_count: number;
-  detection_recall: number;
-  false_positive_rate: number;
-  claim_mismatch_recall: number;
-  verdict_accuracy: number;
-  verification_overhead_ms_median: number;
-  verification_overhead_ms_p95: number;
-  integrity_detection_rate: number;
+  passes: number;
+  deterministic: boolean;
+  all_expectations_met: boolean;
+  mismatched_cases: string[];
+  metrics: Record<string, BenchmarkRatio>;
+  verification_overhead: {
+    samples: number;
+    verification_ms_median: number | null;
+    verification_ms_p95: number | null;
+    definition: string;
+  };
+  secret_scan: { matches: number; bytes_scanned: number };
+  environment: {
+    platform: string;
+    sandbox: { driver: string; enforced: boolean };
+    verifier: { driver: string; isolation: string; network: string; image_id: string | null };
+    model: { provider: string; model_id: string };
+  };
+  limitations: string[];
 }

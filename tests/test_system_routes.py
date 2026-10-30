@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 
 from fastapi.testclient import TestClient
@@ -89,3 +90,29 @@ def test_cors_allows_configured_web_origin(client: TestClient) -> None:
 def test_cors_rejects_unknown_origin(client: TestClient) -> None:
     response = client.get("/api/v1/health", headers={"Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in response.headers
+
+
+def test_benchmark_report_is_served_as_published(make_settings, tmp_path) -> None:
+    report = {"schema_version": "0.1.0", "seed_count": 18, "metrics": {}}
+    path = tmp_path / "report.json"
+    path.write_text(json.dumps(report))
+    client = TestClient(create_app(make_settings(PROOFLAYER_BENCHMARK_REPORT=str(path))))
+    response = client.get("/api/v1/benchmark")
+    assert response.status_code == 200
+    assert response.json() == report
+
+
+def test_missing_or_corrupt_benchmark_report_is_404(make_settings, tmp_path) -> None:
+    corrupt = tmp_path / "corrupt.json"
+    corrupt.write_text("{not json")
+    for path in (tmp_path / "missing.json", corrupt):
+        client = TestClient(create_app(make_settings(PROOFLAYER_BENCHMARK_REPORT=str(path))))
+        response = client.get("/api/v1/benchmark")
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "not_found"
+
+
+def test_default_benchmark_report_is_the_committed_reference_run(make_settings) -> None:
+    body = TestClient(create_app(make_settings())).get("/api/v1/benchmark").json()
+    assert body["seed_count"] == 18
+    assert body["all_expectations_met"] is True

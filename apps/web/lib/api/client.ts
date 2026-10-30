@@ -1,6 +1,7 @@
 import type {
   ApiErrorBody,
   ApiErrorEnvelope,
+  BenchmarkReport,
   CapabilitiesResponse,
   Certificate,
   Challenge,
@@ -100,6 +101,10 @@ export function getCapabilities(
   init?: RequestInit,
 ): Promise<CapabilitiesResponse> {
   return request<CapabilitiesResponse>("/capabilities", init);
+}
+
+export function getBenchmarkReport(init?: RequestInit): Promise<BenchmarkReport> {
+  return request<BenchmarkReport>("/benchmark", init);
 }
 
 export function getTemplates(init?: RequestInit): Promise<Template[]> {

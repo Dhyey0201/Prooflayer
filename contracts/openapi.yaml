@@ -16,6 +16,12 @@ paths:
       operationId: getCapabilities
       responses:
         '200': {description: Environment capabilities and only boolean availability, content: {application/json: {schema: {$ref: '#/components/schemas/Capabilities'}}}}
+  /benchmark:
+    get:
+      operationId: getBenchmarkReport
+      responses:
+        '200': {description: The published benchmark report (written by `make benchmark`; read-only), content: {application/json: {schema: {$ref: '#/components/schemas/BenchmarkReport'}}}}
+        '404': {description: No report has been published, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   /templates:
     get:
       operationId: listTemplates
@@ -117,6 +123,20 @@ components:
         unenforced_live_allowed: {type: boolean, description: "PROOFLAYER_ALLOW_UNENFORCED_LIVE: live-model runs may use the unenforced mock sandbox (development fallback; never in production)"}
         independent_verifier_available: {type: boolean, description: "VERIFIER_DRIVER=docker, the engine answers and the pinned verifier image is present"}
         tavily_enabled: {type: boolean}
+    BenchmarkReport:
+      type: object
+      description: Flat headline fields; `metrics` carries each ratio with numerator, denominator and definition. A ratio is null when its denominator is 0.
+      required: [schema_version, generated_at, seed_count, passes, metrics, deterministic, all_expectations_met, environment, limitations]
+      properties:
+        schema_version: {type: string}
+        generated_at: {type: string, format: date-time}
+        seed_count: {type: integer}
+        passes: {type: integer}
+        deterministic: {type: boolean}
+        all_expectations_met: {type: boolean}
+        metrics: {type: object, additionalProperties: {type: object, properties: {value: {type: [number, 'null']}, numerator: {type: integer}, denominator: {type: integer}, definition: {type: string}}}}
+        environment: {type: object}
+        limitations: {type: array, items: {type: string}}
     Template:
       type: object
       required: [id, title, description, allowed_paths, read_denied_paths, required_checks, policy_version, repo_sha, expected_verdict]
