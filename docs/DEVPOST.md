@@ -176,6 +176,8 @@ SQLAlchemy, Alembic, Next.js, TypeScript, Tailwind CSS, Vitest, pytest, ruff.
 
 ## Try it out
 
-- Hosted demo: `[live demo URL — not deployed as of this draft]`
+- Hosted demo (read-only replay of recorded runs): https://prooflayer-two.vercel.app
+  (API: https://prooflayer-api-nc9q.onrender.com/api/v1. The free tier sleeps when idle, so the
+  first load can take up to a minute.)
 - Source: https://github.com/Dhyey0201/Prooflayer
 - Video: `[YouTube link, <=3 minutes]`

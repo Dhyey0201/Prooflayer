@@ -173,7 +173,7 @@ Optional configuration: `cp .env.example .env` (git-ignored). Setting
 `PROOFLAYER_MOCK_MODE=false` requires `NEBIUS_API_KEY`; the API refuses to start otherwise.
 Keys are server-side only and are never returned by any endpoint.
 
-**Hosted demo:** a read-only replay of the recorded runs (`PROOFLAYER_READ_ONLY=true`;
+**Hosted demo:** https://prooflayer-two.vercel.app, a read-only replay of the recorded runs (`PROOFLAYER_READ_ONLY=true`;
 every write is a typed 403, and no agent or model runs). Build, lock-down and deploy
 steps are in `docs/08_HOSTED_DEMO.md`.
 
