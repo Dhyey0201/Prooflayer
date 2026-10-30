@@ -45,6 +45,8 @@ export interface CapabilitiesResponse {
   live_model_enabled: boolean;
   openshell_available: boolean;
   sandbox_enforced: boolean;
+  /** Live-model runs may use the unenforced mock sandbox (opt-in development fallback). */
+  unenforced_live_allowed: boolean;
   independent_verifier_available: boolean;
   tavily_enabled: boolean;
 }

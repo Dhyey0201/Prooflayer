@@ -9,6 +9,7 @@ const CAPABILITY_LABELS: Record<string, string> = {
   live_model_enabled: "Live model calls",
   openshell_available: "OpenShell available",
   sandbox_enforced: "Sandbox enforced",
+  unenforced_live_allowed: "Live runs without enforcement",
   independent_verifier_available: "Independent verifier",
   tavily_enabled: "Tavily retrieval",
 };

@@ -251,6 +251,26 @@ def test_live_run_refuses_unenforced_sandbox(session_factory, settings) -> None:
     assert driver.sessions[0].released is True
 
 
+def test_opt_in_live_run_on_unenforced_sandbox_is_recorded_as_unenforced(
+    session_factory, make_settings
+) -> None:
+    settings = make_settings(PROOFLAYER_ALLOW_UNENFORCED_LIVE=True)
+    run_id = create(session_factory, TemplateId.SUCCESS_VALIDATION, RunMode.LIVE, live=True)
+    runtime = make_runtime(
+        settings, MockSandboxDriver(), lambda run: ListedTransport(TemplateId(run.task_id))
+    )
+    # Disabled verifier: executed checks are INCONCLUSIVE, but the run is certified.
+    assert RunOrchestrator(session_factory, runtime).process(run_id) is RunStatus.INCONCLUSIVE
+    evts = events(session_factory, run_id)
+    provisioned = next(e for e in evts if e["event_type"] == "sandbox.provisioned")
+    assert provisioned["safe_payload"]["enforced"] is False
+    assert {e["safe_payload"]["provider"] for e in evts if e["event_type"] == "model.called"} == {
+        "nebius"
+    }
+    assert "certificate.issued" in [e["event_type"] for e in evts]
+    assert verify_chain(evts).valid
+
+
 class EnforcedDriver(MockSandboxDriver):
     """Stands in for a confirmed OpenShell sandbox in orchestration tests."""
 

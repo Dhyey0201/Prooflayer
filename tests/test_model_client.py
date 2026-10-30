@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import pytest
 
 from prooflayer_api.ai.client import (
+    MAX_COMPLETION_TOKENS,
     CallOutcome,
     CallRecord,
     ChatMessage,
@@ -140,6 +141,14 @@ def test_token_budget_exhausted_and_caps_completion_tokens() -> None:
         client.complete(MESSAGES)
     assert exc.value.reason == "model_tokens"
     assert transport.calls == 1
+
+
+def test_completion_cap_leaves_room_for_reasoning_tokens() -> None:
+    transport = FakeTransport([ok()])
+    client, _, _ = make_client(transport, max_tokens=20_000)
+    client.complete(MESSAGES)
+    assert transport.max_tokens_seen == [MAX_COMPLETION_TOKENS]
+    assert MAX_COMPLETION_TOKENS >= 4096
 
 
 def test_circuit_breaker_opens_after_consecutive_failures_and_half_opens() -> None:

@@ -102,9 +102,25 @@ def parse_proposal(text: str) -> ChallengeProposal:
     if not isinstance(data, dict):
         raise ChallengeRejectedError("invalid_json")
     try:
-        return ChallengeProposal.model_validate(data)
+        proposal = ChallengeProposal.model_validate(data)
     except ValidationError:
         raise ChallengeRejectedError("schema_violation") from None
+    return proposal.model_copy(update={"test_source": _undo_double_escape(proposal.test_source)})
+
+
+def _undo_double_escape(source: str) -> str:
+    """Nemotron 3 Super sometimes JSON-escapes ``test_source`` twice, so the decoded value
+    is one line of literal ``\\n`` (and sometimes ``\\"``). Undo exactly one layer, only when
+    the source has no real newline; the result still goes through the same static validation.
+    When only the line breaks were escaped, the full decode fails on the bare quotes, so fall
+    back to restoring line breaks and tabs alone."""
+    if "\n" in source or "\\n" not in source:
+        return source
+    try:
+        decoded = json.loads(f'"{source}"')
+    except json.JSONDecodeError:
+        return source.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\t", "\t")
+    return decoded if isinstance(decoded, str) else source
 
 
 @dataclass(frozen=True)

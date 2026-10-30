@@ -1,0 +1,105 @@
+{
+  "checks": [
+    {
+      "command_template_id": "pytest-full-suite@0.1.0",
+      "duration_ms": 13472,
+      "evidence_ref": "6cfb81cd439929e4e749485a362722144a59599ffda343ffee29b7b0f55e2467",
+      "exit_code": 0,
+      "kind": "pytest",
+      "measurements": {},
+      "outcome": "PASS",
+      "output_bytes": 98,
+      "output_sha256": "6cfb81cd439929e4e749485a362722144a59599ffda343ffee29b7b0f55e2467",
+      "reason": "all_tests_passed",
+      "requirement_id": "pytest-full-suite"
+    },
+    {
+      "command_template_id": "diff-within-allowlist@0.1.0",
+      "duration_ms": null,
+      "evidence_ref": null,
+      "exit_code": null,
+      "kind": "diff_allowlist",
+      "measurements": {
+        "changed_files": 1,
+        "outside_allowlist": 0,
+        "unreadable_files": 0
+      },
+      "outcome": "PASS",
+      "output_bytes": null,
+      "output_sha256": null,
+      "reason": "all_changes_allowed",
+      "requirement_id": "diff-within-allowlist"
+    }
+  ],
+  "claims": [
+    {
+      "asserts_tests_passed": true,
+      "claim_id": "agent-final-claim",
+      "requirement_id": "pytest-full-suite",
+      "source": "agent",
+      "statement_chars": 98,
+      "statement_sha256": "16515ea99469a8b7cfc77e2cfbe1766ae214ac4a41c45583cbcf6afeac4ce81d",
+      "status": "SUPPORTED",
+      "trusted": false
+    }
+  ],
+  "evidence_manifest_sha256": "12f41a0b5966b2fb0ed390124ec7e77ffc6c2217a15380861be96d46d0480124",
+  "limitations": [
+    "The verdict covers only these enumerated requirements: pytest-full-suite, diff-within-allowlist.",
+    "PASS means the pinned check passed in the recorded verifier image; it does not establish behaviour the checks do not exercise.",
+    "The agent's claim is untrusted input: it is compared with measurements, never one itself.",
+    "The event chain and manifest provide tamper evidence, not tamper prevention; nothing is signed, so this certificate is not non-repudiable.",
+    "Proof challenges run after issue are reported separately and do not change this verdict.",
+    "The agent ran in the mock sandbox: no policy was enforced by a runtime and the agent's own checks were simulated. Policy denials are modelled, not enforced.",
+    "The independent verifier is a network-less Docker container (container isolation), not an OpenShell-enforced sandbox."
+  ],
+  "manifest": {
+    "agent": {
+      "model_id": "nvidia/nemotron-3-super-120b-a12b",
+      "outcome": "completed",
+      "policy_sha256": "b8e0ee3868f56853a0aac0e457932e8d8ed641e3e68dbceecb1b09b139a2856a",
+      "sandbox_driver": "mock",
+      "sandbox_enforced": false,
+      "worktree_digest": "2363f20b13e16163fd30ad32d11d4be8f8c5628628a62a04c628f88a16806b4d"
+    },
+    "artifacts": [
+      {
+        "role": "agent_output",
+        "sha256": "ae4213bed93c0f11521d3456e54a97280fa1a8a4cd322c6fc197767347382588",
+        "type": "agent_workspace"
+      },
+      {
+        "role": "pytest-full-suite",
+        "sha256": "6cfb81cd439929e4e749485a362722144a59599ffda343ffee29b7b0f55e2467",
+        "type": "verifier_output"
+      }
+    ],
+    "checks_version": "0.1.0",
+    "content_sha256": "6eda4dfb7515f317c00c8da62cc1c59579cc4bf4d03dbda43822d9c92897c6ea",
+    "event_chain_head": "d0cd06623fb002446f143595ff30621b84c26f17aae61b001caee613919b0422",
+    "event_chain_valid": true,
+    "events_through_seq": 35,
+    "issued_at": "2026-10-29T23:22:27.987229Z",
+    "policy_version": "0.1.0",
+    "repo_sha": "0737ad0e6bcddf9479555247a065595dff6887248897b5f00aad404ea8bdad63",
+    "required_checks": [
+      "pytest-full-suite",
+      "diff-within-allowlist"
+    ],
+    "run_id": "8ce53d27-00f1-4ef5-91c5-ed3cec601f97",
+    "schema_version": "0.1.0",
+    "template_id": "success-validation",
+    "verdict": "VERIFIED",
+    "verifier": {
+      "driver": "docker",
+      "image": "prooflayer-verifier:0.1.0",
+      "image_id": "sha256:7e039dc70bac490540557051b171abe1a310e50d0fcb29be08fb94a2769bf48b",
+      "isolation": "container",
+      "network": "none"
+    }
+  },
+  "run_id": "8ce53d27-00f1-4ef5-91c5-ed3cec601f97",
+  "schema_version": "0.1.0",
+  "template_id": "success-validation",
+  "verdict": "VERIFIED"
+}

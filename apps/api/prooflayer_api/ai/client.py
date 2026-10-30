@@ -150,7 +150,9 @@ class RunBudget:
 
 
 # Completion tokens requested per call; capped further by the remaining budget.
-MAX_COMPLETION_TOKENS = 1024
+# Reasoning models (Nemotron 3 Super) count their thinking here too: at 1024 a live
+# challenge reply was cut off mid-JSON (finish_reason=length), so leave headroom.
+MAX_COMPLETION_TOKENS = 4096
 
 
 @dataclass
