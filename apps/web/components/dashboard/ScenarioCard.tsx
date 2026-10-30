@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useState } from "react";
 
 import { LaunchRunButton } from "@/components/dashboard/LaunchRunButton";
@@ -31,7 +32,16 @@ const FALLBACK_STYLE = {
   icon: "M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z",
 };
 
-export function ScenarioCard({ template }: { template: Template }) {
+export function ScenarioCard({
+  template,
+  readOnly = false,
+  recordedRunId = null,
+}: {
+  template: Template;
+  /** Hosted replay: link to the recorded run instead of launching one. */
+  readOnly?: boolean;
+  recordedRunId?: string | null;
+}) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const previewId = useId();
   const style = SCENARIO_STYLE[template.id] ?? FALLBACK_STYLE;
@@ -85,7 +95,18 @@ export function ScenarioCard({ template }: { template: Template }) {
         )}
       </div>
       <div className="mt-5">
-        <LaunchRunButton templateId={template.id} />
+        {!readOnly && <LaunchRunButton templateId={template.id} />}
+        {readOnly && recordedRunId && (
+          <Link
+            href={`/runs/${recordedRunId}`}
+            className="block w-full rounded-lg bg-accent px-3 py-2 text-center text-sm font-medium text-background transition-opacity hover:opacity-90"
+          >
+            Open the recorded run
+          </Link>
+        )}
+        {readOnly && !recordedRunId && (
+          <p className="text-center text-xs text-muted">No recorded run for this scenario.</p>
+        )}
       </div>
     </article>
   );

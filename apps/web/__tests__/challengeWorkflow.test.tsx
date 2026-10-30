@@ -121,6 +121,23 @@ describe("ChallengeWorkflow", () => {
     expect(await screen.findByText("disagree")).toBeInTheDocument();
   });
 
+  it("shows recorded challenges but no request button in a read-only replay", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([baseChallenge()])));
+
+    render(
+      <ChallengeWorkflow
+        runId={RUN_ID}
+        canChallenge
+        certificate={readyCertificateState()}
+        readOnly
+      />,
+    );
+
+    expect(await screen.findByText(/new challenges are disabled/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Request challenge" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Completed")).toBeInTheDocument();
+  });
+
   it("requests a challenge on click and disables the button while active", async () => {
     const fetchMock = vi
       .fn()
