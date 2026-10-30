@@ -45,6 +45,17 @@ docker run --rm -p 127.0.0.1:8010:8000 \
 cd apps/web && NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8010/api/v1 npm run dev
 ```
 
+## Live deployment
+- Web (Vercel): https://prooflayer-two.vercel.app
+- API (Render, `demo/Dockerfile`): https://prooflayer-api-nc9q.onrender.com/api/v1
+  (`PROOFLAYER_CORS_ORIGINS=["https://prooflayer-two.vercel.app"]`)
+
+Checked on 2026-10-30:
+- capabilities `read_only:true`, no key configured;
+- 8 runs served, `/benchmark` 200, `POST /runs` → 403 `read_only`;
+- CORS allows the web origin;
+- `verify_cli --api … --ledger demo/evidence-ledger.jsonl` → exit 0 for all 8 runs.
+
 ## Deploy (needs the owner's hosting accounts)
 Any host that runs a Dockerfile works for the API, and any Next.js host works
 for the web app. One free combination:

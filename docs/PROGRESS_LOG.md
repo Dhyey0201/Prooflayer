@@ -312,7 +312,7 @@ Human and coding agents append one block per merged commit:
 - Security / model cost: about 19,200 agent tokens plus about 10 challenge calls and 3 diagnostic calls. Well under $1 of the team's $20 Nebius credit. Key only in the git-ignored `.env`.
 - Known blockers: enforced agent sandbox needs a Linux host with Landlock. Hosted demo, video and the `v0.1.0-demo` tag are still pending (human).
 
-## 2026-10-30 — Submission readiness: tool feedback, /benchmark page, hosted read-only replay — SHA: see PR (branch `feature/d7-dhyey-submission-readiness`) — Dhyey
+## 2026-10-30 — Submission readiness: tool feedback, /benchmark page, hosted read-only replay — SHAs `5ae0cf4`, `38bcf95`, `b8b30b2` (merged via PR #12, `0f5b7e1`) — Dhyey
 - Three commits, one PR. The deadline is too close to wait for a merge between each, and the team rule is no new PR while another is open.
   1. `docs/DEVPOST.md`: required feedback on Nebius Token Factory, Nemotron and OpenShell, every point from this build.
   2. `GET /api/v1/benchmark` serves the published report (`PROOFLAYER_BENCHMARK_REPORT`; missing or corrupt file → typed 404). The `/benchmark` page renders every ratio with numerator/denominator and shows a null ratio as "n/a", plus mismatched cases, determinism, environment and limitations. An API error stays an error, never placeholder numbers. This was Ancy's page; done at the owner's request before the deadline.
@@ -330,3 +330,15 @@ Human and coding agents append one block per merged commit:
   - Secret scan with the real key over the demo DB and ledger → 0 matches; no local paths or emails in them.
 - Security / model cost: $0 new model spend (scripted runs only). The hosted image has no key, never calls a model or Docker, and refuses writes.
 - Known blockers: deploying needs the owner's Render/Vercel (or similar) accounts. The video, screenshots, Devpost links, the `v0.1.0-demo` tag and the Devpost form remain human tasks.
+
+## 2026-10-30 — Hosted demo deployed — SHA: see PR (branch `feature/d7-dhyey-hosted-demo-links`) — Dhyey
+- Deployed by the owner from `main` (`0f5b7e1`): API on Render (`demo/Dockerfile`, context `.`) at https://prooflayer-api-nc9q.onrender.com, web on Vercel (root `apps/web`) at https://prooflayer-two.vercel.app.
+- First Render deploy failed: `PROOFLAYER_CORS_ORIGINS` was not a JSON list (`SettingsError … cors_origins`). Re-entered as `["https://…"]`; the Vercel domain then differed from the placeholder and was updated.
+- Exact checks from the dev machine:
+  - capabilities `read_only:true`, `nebius_configured:false`;
+  - `/runs` → 8 (3 live, 5 fixture); `/benchmark` 200; `POST /runs` → 403 `read_only`;
+  - `Access-Control-Allow-Origin: https://prooflayer-two.vercel.app`;
+  - `verify_cli --api https://prooflayer-api-nc9q.onrender.com/api/v1 --ledger demo/evidence-ledger.jsonl` → exit 0 for all 8 runs;
+  - Vercel `/`, `/runs`, `/benchmark`, `/runs/<live id>` → 200, with the API URL in the built bundle.
+  - The owner confirmed in the browser that Launch shows the `read_only` message.
+- Remaining (human): video + YouTube link in `docs/DEVPOST.md`, screenshots, `v0.1.0-demo` tag with both sign-offs, Devpost form.
