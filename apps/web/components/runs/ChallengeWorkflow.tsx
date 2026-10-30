@@ -130,10 +130,13 @@ export function ChallengeWorkflow({
   runId,
   canChallenge,
   certificate,
+  readOnly = false,
 }: {
   runId: string;
   canChallenge: boolean;
   certificate: CertificateState;
+  /** Hosted replay: show recorded challenges only, no request button. */
+  readOnly?: boolean;
 }) {
   const { request, requestState, ...status } = useChallenges(runId);
   const hasActiveChallenge =
@@ -150,27 +153,34 @@ export function ChallengeWorkflow({
             changes the certificate above.
           </p>
         </div>
-        <div>
-          <button
-            type="button"
-            onClick={() => void request()}
-            disabled={!canChallenge || hasActiveChallenge || requestState === "pending"}
-            className="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {requestState === "pending" ? "Requesting…" : "Request challenge"}
-          </button>
-          {!canChallenge && (
-            <p className="mt-1 text-xs text-muted">Available once this run is certified.</p>
-          )}
-          {canChallenge && hasActiveChallenge && (
-            <p className="mt-1 text-xs text-muted">A challenge is already in progress.</p>
-          )}
-          {typeof requestState === "object" && (
-            <p role="alert" className="mt-1 text-xs text-rose-300">
-              {requestState.error}
-            </p>
-          )}
-        </div>
+        {readOnly ? (
+          <p className="max-w-xs text-xs text-muted">
+            Read-only replay: new challenges are disabled. Challenges below were recorded from
+            real runs.
+          </p>
+        ) : (
+          <div>
+            <button
+              type="button"
+              onClick={() => void request()}
+              disabled={!canChallenge || hasActiveChallenge || requestState === "pending"}
+              className="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {requestState === "pending" ? "Requesting…" : "Request challenge"}
+            </button>
+            {!canChallenge && (
+              <p className="mt-1 text-xs text-muted">Available once this run is certified.</p>
+            )}
+            {canChallenge && hasActiveChallenge && (
+              <p className="mt-1 text-xs text-muted">A challenge is already in progress.</p>
+            )}
+            {typeof requestState === "object" && (
+              <p role="alert" className="mt-1 text-xs text-rose-300">
+                {requestState.error}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {status.phase === "loading" && (

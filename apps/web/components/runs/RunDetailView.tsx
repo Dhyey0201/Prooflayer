@@ -9,6 +9,7 @@ import { EventTrace } from "@/components/runs/EventTrace";
 import { Tabs } from "@/components/runs/Tabs";
 import { ACTIVE_RUN_STATUSES } from "@/lib/api/types";
 import { useCertificate } from "@/lib/api/useCertificate";
+import { useReadOnly } from "@/lib/api/useReadOnly";
 import { useRunDetail } from "@/lib/api/useRunDetail";
 import { useTemplates } from "@/lib/api/useTemplates";
 
@@ -19,6 +20,7 @@ function formatTimestamp(value: string): string {
 export function RunDetailView({ runId }: { runId: string }) {
   const { cancel, cancelState, ...status } = useRunDetail(runId);
   const templates = useTemplates();
+  const readOnly = useReadOnly();
   // Poll for a certificate while the run has no verdict yet; stop once it
   // does, or once it's terminal with no verdict coming (canceled/error).
   const shouldPollCertificate =
@@ -139,6 +141,7 @@ export function RunDetailView({ runId }: { runId: string }) {
                 runId={run.id}
                 canChallenge={run.verdict !== null}
                 certificate={certificate}
+                readOnly={readOnly}
               />
             ),
           },

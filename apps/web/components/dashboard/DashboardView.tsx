@@ -5,12 +5,25 @@ import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { RunsTable } from "@/components/dashboard/RunsTable";
 import { ScenarioCard } from "@/components/dashboard/ScenarioCard";
 import { SystemStatusPanel } from "@/components/dashboard/SystemStatusPanel";
+import type { Run } from "@/lib/api/types";
+import { useReadOnly } from "@/lib/api/useReadOnly";
 import { useRuns } from "@/lib/api/useRuns";
 import { useTemplates } from "@/lib/api/useTemplates";
 
+const RECENT_RUNS = 5;
+
+/** Newest run per template (the API lists newest first). */
+function latestRunByTemplate(runs: Run[]): Record<string, string> {
+  const latest: Record<string, string> = {};
+  for (const run of runs) latest[run.template_id] ??= run.id;
+  return latest;
+}
+
 export function DashboardView() {
   const templates = useTemplates();
-  const runs = useRuns(5);
+  const runs = useRuns(100);
+  const readOnly = useReadOnly();
+  const recorded = runs.phase === "ready" ? latestRunByTemplate(runs.data) : {};
 
   return (
     <div className="space-y-12">
@@ -42,7 +55,12 @@ export function DashboardView() {
         {templates.phase === "ready" && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {templates.data.map((template) => (
-              <ScenarioCard key={template.id} template={template} />
+              <ScenarioCard
+                key={template.id}
+                template={template}
+                readOnly={readOnly}
+                recordedRunId={recorded[template.id] ?? null}
+              />
             ))}
           </div>
         )}
@@ -60,7 +78,9 @@ export function DashboardView() {
         {runs.phase === "error" && (
           <ErrorPanel message={runs.message} requestId={runs.requestId} onRetry={runs.refresh} />
         )}
-        {runs.phase === "ready" && <RunsTable runs={runs.data} caption="Recent runs" />}
+        {runs.phase === "ready" && (
+          <RunsTable runs={runs.data.slice(0, RECENT_RUNS)} caption="Recent runs" />
+        )}
       </section>
 
       <SystemStatusPanel />
