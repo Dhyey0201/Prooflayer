@@ -47,6 +47,8 @@ export interface CapabilitiesResponse {
   sandbox_enforced: boolean;
   /** Live-model runs may use the unenforced mock sandbox (opt-in development fallback). */
   unenforced_live_allowed: boolean;
+  /** Hosted replay: writes return 403 `read_only` and no runs execute. */
+  read_only: boolean;
   independent_verifier_available: boolean;
   tavily_enabled: boolean;
 }
@@ -116,6 +118,7 @@ export interface Event {
 export type ErrorCode =
   | "bad_request"
   | "validation_error"
+  | "read_only"
   | "not_found"
   | "method_not_allowed"
   | "conflict"

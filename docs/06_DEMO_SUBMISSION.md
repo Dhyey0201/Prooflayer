@@ -3,11 +3,11 @@
 0:00–0:18: State problem: an AI agent's completion message is not proof. Introduce 'Claim → Challenge → Evidence'.
 0:18–0:38: Open dashboard and choose seeded auth-dependency task. Show constraints and required tests. Nebius/Nemotron model badge links to actual recorded inference metadata.
 0:38–1:05: Start real controlled run, show agent's claimed completion and independent trace; avoid waiting by showing a recorded run explicitly labeled 'replay' if execution > video time.
-1:05–1:33: Show genuine OpenShell-denied fake secret-read fixture. Show denial evidence; never call it secret theft.
+1:05–1:33: Show the denied-secret-read fixture: the agent's recorded *attempt* on `.env.production` and the failed forbidden-access check. Say plainly that this sandbox is the mock (`enforced: false`), not OpenShell (Docker Desktop has no Landlock, `docs/07`); never call it secret theft or an OpenShell denial.
 1:33–2:06: Show independent full suite failing despite agent claim. Open failing test and exit code.
 2:06–2:32: Click 'Challenge claim': Nemotron proposes a focused regression case and sandbox verifier actually executes it. Display generated test hash and result.
 2:32–2:50: Open machine-readable proof certificate; compare verified / failed / inconclusive statements and integrity chain.
-2:50–3:00: Tech + impact: Nemotron through Nebius Token Factory, OpenShell isolation, independent verifier; highlight measured benchmark (only if actually measured).
+2:50–3:00: Tech + impact: Nemotron through Nebius Token Factory (show a live run's model ID), independent network-less verifier, measured benchmark (`/benchmark`). Mention OpenShell only as attempted and blocked by the host kernel.
 
 ## Concrete shot list (mapped to the current app, as of Commit 14)
 The storyboard above is the timing; this is which actual screen to be on for each beat. Record against a backend running the real verifier (`VERIFIER_DRIVER=docker`, `make verifier-image` built) — without Docker every check reports INCONCLUSIVE, which is honest but not the most illustrative demo.

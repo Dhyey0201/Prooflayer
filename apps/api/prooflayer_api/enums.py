@@ -84,6 +84,7 @@ class ChallengeStatus(StrEnum):
 class ErrorCode(StrEnum):
     BAD_REQUEST = "bad_request"
     VALIDATION_ERROR = "validation_error"
+    READ_ONLY = "read_only"
     NOT_FOUND = "not_found"
     METHOD_NOT_ALLOWED = "method_not_allowed"
     CONFLICT = "conflict"

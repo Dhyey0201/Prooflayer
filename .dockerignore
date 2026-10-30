@@ -1,0 +1,13 @@
+# Only demo/Dockerfile builds from the repository root. Allow-list exactly what it
+# copies, so secrets (.env), databases, node_modules and local tooling never enter
+# the build context.
+*
+!apps/api/requirements.txt
+!apps/api/alembic.ini
+!apps/api/migrations/
+!apps/api/prooflayer_api/
+!demo/prooflayer-demo.db
+!demo/evidence-ledger.jsonl
+!benchmarks/results/benchmark-report.json
+**/__pycache__
+**/*.pyc

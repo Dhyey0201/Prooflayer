@@ -13,7 +13,7 @@ from . import __version__
 from .config import Settings, get_settings
 from .db.session import make_engine, make_session_factory
 from .errors import UnhandledErrorMiddleware, register_error_handlers
-from .hardening import BodySizeLimitMiddleware, SecurityHeadersMiddleware
+from .hardening import BodySizeLimitMiddleware, ReadOnlyMiddleware, SecurityHeadersMiddleware
 from .request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 from .routes import runs, system
 from .services.fixtures import seed_templates
@@ -45,7 +45,8 @@ def _lifespan(settings: Settings, runtime: Runtime | None):
         app.state.runtime = run_runtime
         app.state.sandbox_status = SandboxStatusCache(run_runtime.driver)
         app.state.verifier_status = VerifierStatusCache(run_runtime.verifier)
-        worker = RunWorker(session_factory, run_runtime) if settings.worker_enabled else None
+        run_worker = settings.worker_enabled and not settings.read_only
+        worker = RunWorker(session_factory, run_runtime) if run_worker else None
         app.state.worker = worker
         if worker is not None:
             worker.start()
@@ -76,6 +77,9 @@ def create_app(settings: Settings | None = None, runtime: Runtime | None = None)
     # ID; the body cap sits inside CORS so a 413 is readable by the browser.
     app.add_middleware(UnhandledErrorMiddleware)
     app.add_middleware(BodySizeLimitMiddleware)
+    if settings.read_only:
+        # Inside CORS, so the browser can read the typed 403.
+        app.add_middleware(ReadOnlyMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

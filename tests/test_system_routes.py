@@ -105,7 +105,8 @@ def test_benchmark_report_is_served_as_published(make_settings, tmp_path) -> Non
 def test_missing_or_corrupt_benchmark_report_is_404(make_settings, tmp_path) -> None:
     corrupt = tmp_path / "corrupt.json"
     corrupt.write_text("{not json")
-    for path in (tmp_path / "missing.json", corrupt):
+    # "" is the packaged-install default (no repo root above the package).
+    for path in (tmp_path / "missing.json", corrupt, ""):
         client = TestClient(create_app(make_settings(PROOFLAYER_BENCHMARK_REPORT=str(path))))
         response = client.get("/api/v1/benchmark")
         assert response.status_code == 404

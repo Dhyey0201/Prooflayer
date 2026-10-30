@@ -64,6 +64,7 @@ describe("api client", () => {
       openshell_available: false,
       sandbox_enforced: false,
       unenforced_live_allowed: false,
+      read_only: false,
       independent_verifier_available: false,
       tavily_enabled: false,
     };

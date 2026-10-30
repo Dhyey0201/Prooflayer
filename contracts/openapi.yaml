@@ -113,7 +113,7 @@ components:
     Capabilities:
       type: object
       additionalProperties: false
-      required: [mock_mode, nebius_configured, live_model_enabled, openshell_available, sandbox_enforced, unenforced_live_allowed, independent_verifier_available, tavily_enabled]
+      required: [mock_mode, nebius_configured, live_model_enabled, openshell_available, sandbox_enforced, unenforced_live_allowed, read_only, independent_verifier_available, tavily_enabled]
       properties:
         mock_mode: {type: boolean}
         nebius_configured: {type: boolean}
@@ -121,6 +121,7 @@ components:
         openshell_available: {type: boolean, description: "SANDBOX_DRIVER=openshell and the CLI + gateway respond"}
         sandbox_enforced: {type: boolean, description: "Runs execute under OpenShell; each sandbox's Landlock enforcement is re-confirmed at provisioning"}
         unenforced_live_allowed: {type: boolean, description: "PROOFLAYER_ALLOW_UNENFORCED_LIVE: live-model runs may use the unenforced mock sandbox (development fallback; never in production)"}
+        read_only: {type: boolean, description: "PROOFLAYER_READ_ONLY: hosted replay; every write returns 403 read_only and no runs execute"}
         independent_verifier_available: {type: boolean, description: "VERIFIER_DRIVER=docker, the engine answers and the pinned verifier image is present"}
         tavily_enabled: {type: boolean}
     BenchmarkReport:
@@ -158,7 +159,7 @@ components:
           type: object
           required: [code, message, request_id]
           properties:
-            code: {type: string, enum: [bad_request, validation_error, not_found, method_not_allowed, conflict, payload_too_large, rate_limited, internal_error]}
+            code: {type: string, enum: [bad_request, validation_error, read_only, not_found, method_not_allowed, conflict, payload_too_large, rate_limited, internal_error]}
             message: {type: string}
             request_id: {type: [string, 'null']}
     RunCreate:

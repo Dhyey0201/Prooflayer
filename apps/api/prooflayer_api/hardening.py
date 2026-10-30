@@ -98,3 +98,22 @@ class BodySizeLimitMiddleware:
             return await receive()
 
         await self.app(scope, replay, send)
+
+
+READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+class ReadOnlyMiddleware:
+    """Hosted replay mode: refuse every write before any route or worker sees it."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope["method"] not in READ_METHODS:
+            response = _respond(
+                403, ErrorCode.READ_ONLY, "This deployment is a read-only replay of recorded runs"
+            )
+            await response(scope, receive, send)
+            return
+        await self.app(scope, receive, send)
