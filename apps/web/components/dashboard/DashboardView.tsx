@@ -1,6 +1,7 @@
 "use client";
 
 import { ErrorPanel } from "@/components/ErrorPanel";
+import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { RunsTable } from "@/components/dashboard/RunsTable";
 import { ScenarioCard } from "@/components/dashboard/ScenarioCard";
 import { SystemStatusPanel } from "@/components/dashboard/SystemStatusPanel";
@@ -12,28 +13,18 @@ export function DashboardView() {
   const runs = useRuns(5);
 
   return (
-    <div className="space-y-10">
-      <header>
-        <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted">
-          ProofLayer independently verifies what an AI coding agent claims it
-          did. Pick a bounded scenario, watch the sandbox, and challenge the
-          completion claim with evidence the agent cannot fabricate.
-        </p>
-      </header>
+    <div className="space-y-12">
+      <DashboardHero />
 
-      <SystemStatusPanel />
-
-      <section aria-labelledby="scenarios-heading" className="space-y-4">
+      <section aria-labelledby="scenarios-heading" className="scroll-mt-6 space-y-4">
         <div>
-          <h2 id="scenarios-heading" className="text-lg font-semibold text-foreground">
+          <h2 id="scenarios-heading" className="text-xl font-semibold text-foreground">
             Scenarios
           </h2>
-          <p className="text-sm text-muted">
-            Three pre-seeded fixtures the demo replays end to end. Launching a
-            run queues it; the backend worker runs the agent in a sandbox, then
-            the independent verifier grades it against the pinned checks —
-            open a run to see its claim, evidence and certificate.
+          <p className="mt-1 max-w-3xl text-sm text-muted">
+            Three pre-seeded fixtures the demo replays end to end. Launching a run queues it; the
+            backend worker runs the agent in a sandbox, then the independent verifier grades it
+            against the pinned checks. Open a run to see its claim, evidence and certificate.
           </p>
         </div>
         {templates.phase === "loading" && (
@@ -58,7 +49,7 @@ export function DashboardView() {
       </section>
 
       <section aria-labelledby="recent-runs-heading" className="space-y-4">
-        <h2 id="recent-runs-heading" className="text-lg font-semibold text-foreground">
+        <h2 id="recent-runs-heading" className="text-xl font-semibold text-foreground">
           Recent runs
         </h2>
         {runs.phase === "loading" && (
@@ -67,16 +58,12 @@ export function DashboardView() {
           </p>
         )}
         {runs.phase === "error" && (
-          <ErrorPanel
-            message={runs.message}
-            requestId={runs.requestId}
-            onRetry={runs.refresh}
-          />
+          <ErrorPanel message={runs.message} requestId={runs.requestId} onRetry={runs.refresh} />
         )}
-        {runs.phase === "ready" && (
-          <RunsTable runs={runs.data} caption="Recent runs" />
-        )}
+        {runs.phase === "ready" && <RunsTable runs={runs.data} caption="Recent runs" />}
       </section>
+
+      <SystemStatusPanel />
     </div>
   );
 }
